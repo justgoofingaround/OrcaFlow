@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# Node/React/Vue
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+.next/
+.nuxt/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.csv
+*.json
+*.parquet
+data/
+
+# Models
+*.pkl
+*.joblib
+*.h5
+*.pth
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.redb

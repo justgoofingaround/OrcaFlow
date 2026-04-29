@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package orcaflow.controlplane;
+
+// Control Plane Service Definition
+// Manages cluster state, schedules jobs, and coordinates worker agents
+
+service ControlPlane {
+    // Register a worker agent with the control plane
+    rpc RegisterWorker(RegisterWorkerRequest) returns (RegisterWorkerResponse);
+    
+    // Heartbeat from worker to control plane
+    rpc WorkerHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    
+    // Submit a job for scheduling
+    rpc SubmitJob(JobSubmissionRequest) returns (JobSubmissionResponse);
+    
+    // Get job status
+    rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+    
+    // Get cluster status
+    rpc GetClusterStatus(Empty) returns (ClusterStatusResponse);
+    
+    // List all workers
+    rpc ListWorkers(Empty) returns (ListWorkersResponse);
+}
+
+message RegisterWorkerRequest {
+    string worker_id = 1;
+    int32 cpu_cores = 2;
+    int64 memory_mb = 3;
+    string location = 4;
+    string spark_master_url = 5;
+}
+
+message RegisterWorkerResponse {
+    string agent_id = 1;
+    bool success = 2;
+    string message = 3;
+}
+
+message HeartbeatRequest {
+    string agent_id = 1;
+    float cpu_usage_pct = 2;
+    int64 memory_usage_mb = 3;
+    int64 disk_usage_mb = 4;
+    int32 running_jobs = 5;
+    string status = 6;  // "idle", "running", "degraded"
+}
+
+message HeartbeatResponse {
+    bool acknowledged = 1;
+    repeated JobAssignment job_assignments = 2;
+}
+
+message JobAssignment {
+    string job_id = 1;
+    string executable = 2;
+    repeated string arguments = 3;
+    map<string, string> environment = 4;
+    string working_directory = 5;
+}
+
+message JobSubmissionRequest {
+    string job_id = 1;
+    string job_type = 2;
+    int64 dataset_size_mb = 3;
+    string code_path = 4;
+    map<string, string> parameters = 5;
+    int32 priority = 6;
+    int32 estimated_duration_sec = 7;
+}
+
+message JobSubmissionResponse {
+    string job_id = 1;
+    bool success = 2;
+    string message = 3;
+    string routing_decision = 4;  // "local", "spark"
+}
+
+message GetJobStatusRequest {
+    string job_id = 1;
+}
+
+message GetJobStatusResponse {
+    string job_id = 1;
+    string status = 2;  // "queued", "running", "success", "failed"
+    string agent_id = 3;
+    int32 progress_pct = 4;
+    string error_message = 5;
+    int64 duration_sec = 6;
+}
+
+message ClusterStatusResponse {
+    int32 total_workers = 1;
+    int32 active_workers = 2;
+    int32 idle_workers = 3;
+    int64 total_cpu_cores = 4;
+    int64 available_cpu_cores = 5;
+    int64 total_memory_mb = 6;
+    int64 available_memory_mb = 7;
+    int32 running_jobs = 8;
+    int32 queued_jobs = 9;
+    int32 completed_jobs = 10;
+}
+
+message ListWorkersResponse {
+    repeated WorkerInfo workers = 1;
+}
+
+message WorkerInfo {
+    string agent_id = 1;
+    string status = 2;
+    int32 cpu_cores = 3;
+    int64 memory_mb = 4;
+    string location = 5;
+    float cpu_usage_pct = 6;
+    int64 memory_usage_mb = 7;
+    string last_heartbeat = 8;
+    int32 running_jobs = 9;
+}
+
+message Empty {}

@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'orcaflow'
+
+scrape_configs:
+  - job_name: 'orcaflow-api'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'orcaflow-workers'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'orcaflow-control-plane'
+    static_configs:
+      - targets: ['localhost:9091']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Alert rules
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+rule_files:
+  - 'orcaflow_rules.yml'

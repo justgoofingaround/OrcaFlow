@@ -1,0 +1,47 @@
+syntax = "proto3";
+package worker;
+ 
+service Worker {
+    rpc Heartbeat(Empty) returns (ReturnStatus);
+    rpc RunJob(Job) returns (ReturnStatus);
+    rpc KillJob(JobId) returns (ReturnStatus);
+    rpc Terminate(Empty) returns (ReturnStatus);
+    rpc RegisterApp(SparkApp) returns (ReturnStatus);
+}
+
+message SparkApp{
+    string url = 1;
+    string id = 2;
+    string job_name = 3;
+    optional string cache_dir = 4;
+    Spec spec = 5;
+}
+
+message Spec{
+    int64 cores = 1;
+    int64 memory = 2;
+    optional string protocol = 3; 
+}
+
+message Empty{
+}
+
+message Job {
+    optional string job_name = 1;
+    uint64 job_hash = 2;
+    string command = 3;
+    string job_type = 4;
+    uint64 category = 5;
+    map<string, string> envs = 6;
+    Spec spec = 7;
+    optional Spec lightweight_spec = 8;
+    optional string cache_dir = 9;
+}
+
+message ReturnStatus {
+    string status = 1;
+}
+
+message JobId {
+    uint64 job_hash = 1;
+}

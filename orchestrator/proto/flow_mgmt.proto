@@ -1,0 +1,34 @@
+syntax = "proto3";
+package flow_mgmt;
+service FlowManagement {
+    rpc UpdateTaskInst(TaskInstUpdate) returns (MessageResponse);
+}
+
+message FlowInst {
+  string name = 1;
+}
+
+message TaskInst {
+  FlowInst flow_inst = 1;
+  string name = 2;
+}
+
+message TaskInstUpdate {
+  State state = 1;
+  repeated string downstream_tasks = 2;
+  TaskInst task_inst = 3;
+  optional string message = 4;
+}
+
+enum State {
+  QUEUED = 0;
+  RUNNING = 1;
+  SUCCESS = 2;
+  FAILED = 3;
+  SKIPPED = 4;
+  KILLED = 5;
+}
+
+message MessageResponse {
+  string message = 1;
+}
