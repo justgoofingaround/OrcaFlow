@@ -36,6 +36,8 @@ def create_spark_session():
         .config("spark.executor.memory", "2g") \
         .config("spark.executor.cores", "2") \
         .config("spark.sql.shuffle.partitions", "200") \
+        .config("spark.hadoop.fs.viewfs.impl.disable.cache", "true") \
+        .config("spark.driver.extraJavaOptions", "--add-opens java.base/javax.security.auth=ALL-UNNAMED") \
         .getOrCreate()
 
 
@@ -124,22 +126,22 @@ def analyze_transactions(df):
 def save_results(category_stats, customer_stats, output_dir="/tmp/orcaflow_output"):
     """
     Save analysis results to CSV files.
-    
+
     Args:
         category_stats (DataFrame): Category aggregation results
         customer_stats (DataFrame): Customer aggregation results
         output_dir (str): Output directory path (default /tmp/orcaflow_output)
     """
     import os
-    
+
     print(f"[JOB] Saving results to {output_dir}...")
-    
+
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Save as CSV with single partition for easier reading
-    category_stats.coalesce(1).write.mode("overwrite").csv(f"{output_dir}/category_stats")
-    customer_stats.coalesce(1).write.mode("overwrite").csv(f"{output_dir}/customer_stats")
-    
+
+    # Convert to Pandas and save (avoids Hadoop FileSystem issues on local mode)
+    category_stats.toPandas().to_csv(f"{output_dir}/category_stats.csv", index=False)
+    customer_stats.toPandas().to_csv(f"{output_dir}/customer_stats.csv", index=False)
+
     print("[JOB] Results saved successfully")
 
 def main():

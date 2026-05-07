@@ -274,8 +274,8 @@ async def get_events(limit: int = 50) -> Dict[str, Any]:
 # Dashboard
 # ============================================================
 
-@app.get("/", tags=["Dashboard"])
-async def serve_dashboard() -> FileResponse | Dict[str, Any]:
+@app.get("/", tags=["Dashboard"], response_model=None)
+async def serve_dashboard():
     """Serve the analytics dashboard."""
     possible_paths = [
         os.path.join(os.path.dirname(__file__), "..", "ui", "dashboard.html"),

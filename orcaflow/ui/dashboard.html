@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrcaFlow - Analytics Dashboard</title>
+    <title>OrcaFlow Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,104 +11,116 @@
         .wrapper { display: flex; min-height: 100vh; }
 
         /* SIDEBAR */
-        .sidebar { width: 260px; background: white; padding: 30px 0; border-right: 1px solid #e2e8f0; }
-        .logo { padding: 0 24px 30px; font-size: 20px; font-weight: 700; }
-        .sidebar-label { padding: 0 24px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #a0aec0; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .sidebar-section { margin-bottom: 30px; }
-        .sidebar-item { padding: 10px 24px; color: #4a5568; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; }
+        .sidebar { width: 240px; background: white; padding: 24px 0; border-right: 1px solid #e2e8f0; position: fixed; height: 100vh; overflow-y: auto; }
+        .logo { padding: 0 20px 24px; font-size: 20px; font-weight: 700; }
+        .sidebar-label { padding: 0 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #a0aec0; letter-spacing: 0.5px; margin-bottom: 8px; margin-top: 16px; }
+        .sidebar-item { padding: 9px 20px; color: #4a5568; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; user-select: none; }
         .sidebar-item:hover { background: #f7fafc; }
         .sidebar-item.active { background: #edf2f7; color: #2d3748; border-left-color: #4299e1; font-weight: 600; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
-        .status-dot.green { background: #48bb78; }
-        .status-dot.red { background: #f56565; }
-        .status-dot.yellow { background: #ecc94b; }
+        .dot-green { background: #48bb78; }
+        .dot-red { background: #f56565; }
+        .dot-yellow { background: #ecc94b; }
+        .dot-gray { background: #cbd5e0; }
 
         /* MAIN */
-        .main { flex: 1; overflow: auto; }
-        .header { background: white; padding: 20px 32px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        .header-title { font-size: 22px; font-weight: 700; }
-        .content { padding: 24px 32px; }
+        .main { flex: 1; margin-left: 240px; overflow: auto; }
+        .header { background: white; padding: 16px 28px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .header-title { font-size: 18px; font-weight: 700; }
+        .content { padding: 20px 28px; }
 
-        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn { padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
         .btn-primary { background: #4299e1; color: white; }
         .btn-primary:hover { background: #3182ce; }
+        .btn-secondary { background: #edf2f7; color: #2d3748; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        /* PAGE SECTIONS */
+        .page { display: none; }
+        .page.active { display: block; }
 
         /* METRICS */
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .metric-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .metric-label { font-size: 12px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
-        .metric-value { font-size: 28px; font-weight: 700; color: #1a202c; }
-        .metric-sub { font-size: 11px; color: #a0aec0; margin-top: 4px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .metric-card { background: white; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .metric-label { font-size: 11px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+        .metric-value { font-size: 26px; font-weight: 700; color: #1a202c; }
+        .metric-sub { font-size: 11px; color: #a0aec0; margin-top: 2px; }
 
         /* CARDS */
-        .cards-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-        .card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; padding: 20px; }
-        .card-title { font-size: 15px; font-weight: 700; color: #1a202c; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; padding: 18px; margin-bottom: 14px; }
+        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 14px; }
 
         /* PROGRESS BARS */
-        .resource-row { padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .resource-row { padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
         .resource-row:last-child { border-bottom: none; }
-        .resource-name { font-size: 13px; color: #4a5568; font-weight: 500; }
+        .resource-name { font-size: 13px; color: #4a5568; }
         .resource-right { display: flex; align-items: center; gap: 10px; }
         .progress-bar { width: 100px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-        .progress-fill.blue { background: #4299e1; }
-        .progress-fill.green { background: #48bb78; }
-        .progress-fill.red { background: #f56565; }
-        .progress-fill.orange { background: #ed8936; }
+        .fill-blue { background: #4299e1; }
+        .fill-green { background: #48bb78; }
+        .fill-orange { background: #ed8936; }
+        .fill-red { background: #f56565; }
         .resource-val { font-size: 13px; font-weight: 600; color: #2d3748; min-width: 40px; text-align: right; }
 
         /* BADGES */
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-        .badge-local { background: #ebf8ff; color: #2b6cb0; }
-        .badge-cluster { background: #f0fff4; color: #276749; }
-        .badge-small { background: #fefcbf; color: #975a16; }
-        .badge-medium { background: #fed7aa; color: #9c4221; }
-        .badge-large { background: #fed7d7; color: #9b2c2c; }
-        .badge-running { background: #c6f6d5; color: #276749; }
-        .badge-success { background: #c6f6d5; color: #22543d; }
-        .badge-failed { background: #fed7d7; color: #9b2c2c; }
-        .badge-submitted { background: #e9d8fd; color: #553c9a; }
+        .b-local { background: #ebf8ff; color: #2b6cb0; }
+        .b-yarn { background: #f0fff4; color: #276749; }
+        .b-running { background: #c6f6d5; color: #276749; }
+        .b-success { background: #c6f6d5; color: #22543d; }
+        .b-failed { background: #fed7d7; color: #9b2c2c; }
+        .b-queued { background: #e9d8fd; color: #553c9a; }
+        .b-connected { background: #c6f6d5; color: #22543d; }
+        .b-offline { background: #fed7d7; color: #9b2c2c; }
 
-        /* EVENT LOG */
-        .event-list { max-height: 250px; overflow-y: auto; }
-        .event-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; display: flex; gap: 8px; align-items: flex-start; }
-        .event-item:last-child { border-bottom: none; }
-        .event-time { color: #a0aec0; min-width: 70px; font-family: monospace; }
-        .event-type { font-weight: 600; min-width: 100px; }
-        .event-detail { color: #4a5568; }
-
-        /* JOB TABLE */
-        .job-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .job-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #718096; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .job-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
-        .job-table tr:hover { background: #f7fafc; }
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; color: #718096; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+        tr:hover { background: #f7fafc; }
 
         /* CHART */
-        .chart-container { position: relative; height: 250px; }
+        .chart-container { position: relative; height: 220px; }
 
-        /* SUBMIT FORM */
+        /* FORMS */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
         .form-group label { font-size: 12px; font-weight: 600; color: #4a5568; margin-bottom: 4px; display: block; }
-        .form-input { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
+        .form-input, .form-select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; font-family: inherit; }
 
-        /* CLASSIFICATION RESULT */
-        .classification-result { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 12px; display: none; }
-        .classification-result.show { display: block; }
-        .class-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .class-label { font-size: 14px; font-weight: 700; }
-        .class-confidence { font-size: 12px; color: #718096; }
-        .class-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .class-detail-item { text-align: center; }
-        .class-detail-value { font-size: 16px; font-weight: 700; color: #2d3748; }
-        .class-detail-label { font-size: 11px; color: #a0aec0; }
-
+        /* ALERT */
         .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
-        .alert.success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
-        .alert.error { background: #fff5f5; color: #9b2c2c; border: 1px solid #fed7d7; }
+        .alert-ok { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+        .alert-err { background: #fff5f5; color: #9b2c2c; border: 1px solid #fed7d7; }
+        .alert-info { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
 
-        @media (max-width: 1200px) { .cards-section { grid-template-columns: 1fr; } }
-        @media (max-width: 768px) { .sidebar { width: 200px; } .metrics-grid { grid-template-columns: 1fr 1fr; } }
+        /* EVENT LOG */
+        .event-list { max-height: 400px; overflow-y: auto; }
+        .event-item { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; display: flex; gap: 8px; }
+        .event-time { color: #a0aec0; min-width: 65px; font-family: monospace; }
+        .event-type { font-weight: 600; min-width: 110px; }
+        .event-detail { color: #4a5568; word-break: break-all; }
+
+        /* INFO GRID */
+        .info-grid { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 13px; }
+        .info-label { color: #718096; font-weight: 600; }
+        .info-value { color: #2d3748; }
+
+        /* CLASSIFICATION */
+        .cls-result { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-top: 12px; display: none; }
+        .cls-result.show { display: block; }
+        .cls-row { display: flex; justify-content: space-around; margin-top: 10px; text-align: center; }
+        .cls-val { font-size: 18px; font-weight: 700; color: #2d3748; }
+        .cls-lbl { font-size: 11px; color: #a0aec0; }
+
+        /* LOG */
+        .log-box { background: #1a202c; color: #e2e8f0; padding: 14px; border-radius: 6px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+        .empty { color: #a0aec0; text-align: center; padding: 30px; font-size: 13px; }
+
+        @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .sidebar { width: 180px; } .main { margin-left: 180px; } .metrics-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -116,379 +128,518 @@
         <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="logo">OrcaFlow</div>
-            <div class="sidebar-section">
-                <div class="sidebar-label">Pipeline</div>
-                <div class="sidebar-item active">Dashboard</div>
-                <div class="sidebar-item">Jobs</div>
-                <div class="sidebar-item">Submit Job</div>
-            </div>
-            <div class="sidebar-section">
-                <div class="sidebar-label">Infrastructure</div>
-                <div class="sidebar-item">Dataproc <div class="status-dot" id="dataproc-dot"></div></div>
-                <div class="sidebar-item">Kafka <div class="status-dot" id="kafka-dot"></div></div>
-                <div class="sidebar-item">YARN</div>
-            </div>
-            <div class="sidebar-section">
-                <div class="sidebar-label">ML</div>
-                <div class="sidebar-item">Classifier</div>
-                <div class="sidebar-item">Predictions</div>
-            </div>
+
+            <div class="sidebar-label">Pipeline</div>
+            <div class="sidebar-item active" onclick="showPage('dashboard')">Dashboard</div>
+            <div class="sidebar-item" onclick="showPage('jobs')">Jobs</div>
+            <div class="sidebar-item" onclick="showPage('submit')">Submit Job</div>
+
+            <div class="sidebar-label">Infrastructure</div>
+            <div class="sidebar-item" onclick="showPage('dataproc')">Dataproc <span class="status-dot dot-gray" id="dp-dot"></span></div>
+            <div class="sidebar-item" onclick="showPage('kafka')">Kafka <span class="status-dot dot-gray" id="kf-dot"></span></div>
+            <div class="sidebar-item" onclick="showPage('yarn')">YARN</div>
+
+            <div class="sidebar-label">ML</div>
+            <div class="sidebar-item" onclick="showPage('classifier')">Classifier</div>
+            <div class="sidebar-item" onclick="showPage('predictions')">Predictions</div>
         </div>
 
         <!-- MAIN -->
         <div class="main">
             <div class="header">
-                <div class="header-title">OrcaFlow Dashboard</div>
+                <div class="header-title" id="page-title">Dashboard</div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <span id="connection-status" style="font-size:12px;color:#a0aec0;">Connecting...</span>
-                    <button class="btn btn-primary" onclick="updateDashboard()">Refresh</button>
+                    <span id="conn-status" style="font-size:12px;color:#a0aec0;">Connecting...</span>
+                    <button class="btn btn-primary" onclick="refreshAll()">Refresh</button>
                 </div>
             </div>
 
             <div class="content">
-                <!-- METRICS -->
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">Active Jobs</div>
-                        <div class="metric-value" id="running-jobs">0</div>
-                        <div class="metric-sub" id="running-sub">-</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Completed</div>
-                        <div class="metric-value" id="success-jobs">0</div>
-                        <div class="metric-sub" id="success-sub">-</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Failed</div>
-                        <div class="metric-value" id="failed-jobs">0</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Local Jobs</div>
-                        <div class="metric-value" id="local-jobs">0</div>
-                        <div class="metric-sub">small_quick</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Cluster Jobs</div>
-                        <div class="metric-value" id="cluster-jobs">0</div>
-                        <div class="metric-sub">Dataproc YARN</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">CPU Usage</div>
-                        <div class="metric-value" id="cpu-usage">0%</div>
-                    </div>
-                </div>
 
-                <!-- ROW 1: Resources + Job Queue -->
-                <div class="cards-section">
-                    <div class="card">
-                        <div class="card-title">System Resources</div>
-                        <div class="resource-row">
-                            <span class="resource-name">CPU</span>
-                            <div class="resource-right">
-                                <div class="progress-bar"><div class="progress-fill blue" id="cpu-bar" style="width:0%"></div></div>
-                                <span class="resource-val" id="cpu-val">0%</span>
-                            </div>
-                        </div>
-                        <div class="resource-row">
-                            <span class="resource-name">Memory</span>
-                            <div class="resource-right">
-                                <div class="progress-bar"><div class="progress-fill green" id="mem-bar" style="width:0%"></div></div>
-                                <span class="resource-val" id="mem-val">0%</span>
-                            </div>
-                        </div>
-                        <div class="resource-row">
-                            <span class="resource-name">Disk</span>
-                            <div class="resource-right">
-                                <div class="progress-bar"><div class="progress-fill orange" id="disk-bar" style="width:0%"></div></div>
-                                <span class="resource-val" id="disk-val">0%</span>
-                            </div>
-                        </div>
-                        <div class="resource-row">
-                            <span class="resource-name">Dataproc</span>
-                            <div class="resource-right">
-                                <span class="badge" id="dataproc-badge">checking...</span>
-                            </div>
-                        </div>
-                        <div class="resource-row">
-                            <span class="resource-name">Kafka</span>
-                            <div class="resource-right">
-                                <span class="badge" id="kafka-badge">checking...</span>
-                            </div>
-                        </div>
+                <!-- ===== DASHBOARD ===== -->
+                <div class="page active" id="page-dashboard">
+                    <div class="metrics-grid">
+                        <div class="metric-card"><div class="metric-label">Active Jobs</div><div class="metric-value" id="m-running">0</div></div>
+                        <div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value" id="m-success">0</div></div>
+                        <div class="metric-card"><div class="metric-label">Failed</div><div class="metric-value" id="m-failed">0</div></div>
+                        <div class="metric-card"><div class="metric-label">Local Jobs</div><div class="metric-value" id="m-local">0</div><div class="metric-sub">small_quick</div></div>
+                        <div class="metric-card"><div class="metric-label">Cluster Jobs</div><div class="metric-value" id="m-cluster">0</div><div class="metric-sub">Dataproc YARN</div></div>
+                        <div class="metric-card"><div class="metric-label">CPU Usage</div><div class="metric-value" id="m-cpu">0%</div></div>
                     </div>
-
-                    <div class="card">
-                        <div class="card-title">Activity</div>
-                        <div class="chart-container">
-                            <canvas id="resourceChart"></canvas>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">System Resources</div>
+                            <div class="resource-row"><span class="resource-name">CPU</span><div class="resource-right"><div class="progress-bar"><div class="progress-fill fill-blue" id="bar-cpu" style="width:0%"></div></div><span class="resource-val" id="val-cpu">0%</span></div></div>
+                            <div class="resource-row"><span class="resource-name">Memory</span><div class="resource-right"><div class="progress-bar"><div class="progress-fill fill-green" id="bar-mem" style="width:0%"></div></div><span class="resource-val" id="val-mem">0%</span></div></div>
+                            <div class="resource-row"><span class="resource-name">Disk</span><div class="resource-right"><div class="progress-bar"><div class="progress-fill fill-orange" id="bar-disk" style="width:0%"></div></div><span class="resource-val" id="val-disk">0%</span></div></div>
+                            <div class="resource-row"><span class="resource-name">Dataproc</span><div class="resource-right"><span class="badge" id="badge-dp">--</span></div></div>
+                            <div class="resource-row"><span class="resource-name">Kafka</span><div class="resource-right"><span class="badge" id="badge-kf">--</span></div></div>
+                        </div>
+                        <div class="card"><div class="card-title">Activity</div><div class="chart-container"><canvas id="activityChart"></canvas></div></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">Recent Jobs</div>
+                            <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Type</th></tr></thead>
+                            <tbody id="dash-jobs"><tr><td colspan="4" class="empty">No jobs yet</td></tr></tbody></table>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Kafka Events</div>
+                            <div class="event-list" id="dash-events"><div class="empty">Events appear when Kafka is running</div></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ROW 2: Job Table + Event Stream -->
-                <div class="cards-section">
-                    <div class="card">
-                        <div class="card-title">Recent Jobs</div>
-                        <table class="job-table">
-                            <thead>
-                                <tr>
-                                    <th>Job ID</th>
-                                    <th>Status</th>
-                                    <th>Target</th>
-                                    <th>Type</th>
-                                </tr>
-                            </thead>
-                            <tbody id="job-table-body">
-                                <tr><td colspan="4" style="color:#a0aec0;text-align:center;">No jobs yet</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Kafka Event Stream <span id="event-count" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></div>
-                        <div class="event-list" id="event-list">
-                            <div style="color:#a0aec0;text-align:center;padding:20px;font-size:13px;">
-                                Events will appear here when Kafka is connected and jobs are submitted
-                            </div>
+                <!-- ===== JOBS ===== -->
+                <div class="page" id="page-jobs">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-sm btn-secondary" onclick="filterJobs(null)">All</button>
+                            <button class="btn btn-sm btn-secondary" onclick="filterJobs('running')">Running</button>
+                            <button class="btn btn-sm btn-secondary" onclick="filterJobs('success')">Completed</button>
+                            <button class="btn btn-sm btn-secondary" onclick="filterJobs('failed')">Failed</button>
                         </div>
+                        <button class="btn btn-sm btn-primary" onclick="showPage('submit')">New Job</button>
+                    </div>
+                    <div class="card">
+                        <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Type</th><th>Progress</th><th>Duration</th><th>Records</th><th>Actions</th></tr></thead>
+                        <tbody id="jobs-table"><tr><td colspan="8" class="empty">No jobs submitted yet</td></tr></tbody></table>
+                    </div>
+                    <div class="card" id="job-detail-card" style="display:none;">
+                        <div class="card-title">Job Details <button class="btn btn-sm btn-secondary" onclick="document.getElementById('job-detail-card').style.display='none'" style="float:right;">Close</button></div>
+                        <div class="info-grid" id="job-detail-info"></div>
+                        <div style="margin-top:12px;"><div class="card-title">Output Log</div><div class="log-box" id="job-detail-log">No output available</div></div>
                     </div>
                 </div>
 
-                <!-- SUBMIT JOB -->
-                <div class="card">
-                    <div class="card-title">Submit New Job</div>
-                    <div id="message"></div>
-                    <form id="job-form">
+                <!-- ===== SUBMIT JOB ===== -->
+                <div class="page" id="page-submit">
+                    <div class="card">
+                        <div class="card-title">Submit New Job</div>
+                        <div id="submit-msg"></div>
+                        <form id="job-form" onsubmit="submitJob(event)">
+                            <div class="form-grid">
+                                <div class="form-group"><label>Job Type</label><select id="f-type" class="form-select"><option value="batch_analytics">Batch Analytics</option><option value="data_processing">Data Processing</option><option value="ml_training">ML Training</option></select></div>
+                                <div class="form-group"><label>Dataset Size (MB)</label><input type="number" id="f-size" class="form-input" value="100" min="1"></div>
+                                <div class="form-group"><label>Complexity (1-10)</label><input type="number" id="f-complexity" class="form-input" value="5" min="1" max="10"></div>
+                                <div class="form-group"><label>Memory (MB)</label><input type="number" id="f-memory" class="form-input" value="1024" min="128"></div>
+                                <div class="form-group"><label>CPU Cores</label><input type="number" id="f-cpu" class="form-input" value="2" min="1"></div>
+                                <div class="form-group"><label>Priority (1-10)</label><input type="number" id="f-priority" class="form-input" value="5" min="1" max="10"></div>
+                            </div>
+                            <div style="margin-top:14px;display:flex;gap:10px;">
+                                <button type="button" class="btn btn-secondary" onclick="previewClassify()">Preview Classification</button>
+                                <button type="submit" class="btn btn-primary">Submit Job</button>
+                            </div>
+                        </form>
+                        <div class="cls-result" id="cls-result">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-weight:700;">ML Classification: <span id="cls-name">-</span></span>
+                                <span style="font-size:12px;color:#718096;" id="cls-conf">-</span>
+                            </div>
+                            <div class="cls-row">
+                                <div><div class="cls-val" id="cls-target">-</div><div class="cls-lbl">Target</div></div>
+                                <div><div class="cls-val" id="cls-dur">-</div><div class="cls-lbl">Est. Duration</div></div>
+                                <div><div class="cls-val" id="cls-workers">-</div><div class="cls-lbl">Workers</div></div>
+                                <div><div class="cls-val" id="cls-cost">-</div><div class="cls-lbl">Est. Cost</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">How Job Routing Works</div>
+                        <p style="font-size:13px;color:#4a5568;line-height:1.6;">
+                            When you submit a job, the ML classifier analyzes the parameters and predicts the job class:<br><br>
+                            <b>small_quick</b> (low data, low complexity) &rarr; Runs locally on this machine<br>
+                            <b>medium_cpu</b> (moderate data/complexity) &rarr; Sent to NYU Dataproc YARN cluster (2 executors)<br>
+                            <b>large_intensive</b> (high data/complexity) &rarr; Sent to NYU Dataproc YARN cluster (4 executors)<br><br>
+                            The PySpark job generates synthetic transaction data, runs distributed analytics (category revenue, top customers, time-series, cross-tabs), and saves results.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ===== DATAPROC ===== -->
+                <div class="page" id="page-dataproc">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">Connection Status</div>
+                            <div class="info-grid" id="dp-info"><span class="info-label">Status</span><span class="info-value">Click Test Connection</span></div>
+                            <div style="margin-top:12px;"><button class="btn btn-sm btn-primary" onclick="checkDataproc()">Test Connection</button></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Cluster Info</div>
+                            <div class="info-grid">
+                                <span class="info-label">Project</span><span class="info-value">hpc-dataproc-19b8</span>
+                                <span class="info-label">Zone</span><span class="info-value">us-central1-f</span>
+                                <span class="info-label">Master Node</span><span class="info-value">nyu-dataproc-m</span>
+                                <span class="info-label">HDFS Path</span><span class="info-value">/user/ps5390_nyu_edu/orcaflow</span>
+                                <span class="info-label">Connection</span><span class="info-value">SSH via gcloud</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">HDFS Files <button class="btn btn-sm btn-secondary" onclick="loadHDFS()" style="float:right;">Refresh</button></div>
+                        <div id="hdfs-content"><div class="empty">Click Refresh to load HDFS listing</div></div>
+                    </div>
+                </div>
+
+                <!-- ===== KAFKA ===== -->
+                <div class="page" id="page-kafka">
+                    <div class="card">
+                        <div class="card-title">Kafka Status</div>
+                        <div class="info-grid">
+                            <span class="info-label">Status</span><span class="info-value" id="kf-status">Checking...</span>
+                            <span class="info-label">Broker</span><span class="info-value">localhost:9092</span>
+                            <span class="info-label">Topics</span><span class="info-value">orcaflow-job-events, orcaflow-cluster-metrics</span>
+                        </div>
+                        <p style="font-size:12px;color:#718096;margin-top:10px;">Start Kafka with: <code style="background:#edf2f7;padding:2px 6px;border-radius:3px;">docker-compose up -d kafka</code></p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Event Stream <span id="kf-count" style="font-size:11px;color:#a0aec0;font-weight:400;"></span>
+                            <button class="btn btn-sm btn-secondary" onclick="loadEvents()" style="float:right;">Refresh</button>
+                        </div>
+                        <div class="event-list" id="kafka-events"><div class="empty">No events yet. Start Kafka and submit jobs to see events here.</div></div>
+                    </div>
+                </div>
+
+                <!-- ===== YARN ===== -->
+                <div class="page" id="page-yarn">
+                    <div class="card">
+                        <div class="card-title">YARN Applications <button class="btn btn-sm btn-secondary" onclick="loadYARN()" style="float:right;">Refresh</button></div>
+                        <div id="yarn-content"><div class="empty">Click Refresh to fetch YARN status from Dataproc</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">About YARN</div>
+                        <p style="font-size:13px;color:#4a5568;line-height:1.6;">
+                            YARN (Yet Another Resource Negotiator) is the resource manager on the NYU Dataproc cluster.
+                            When OrcaFlow classifies a job as <b>medium_cpu</b> or <b>large_intensive</b>, it submits the PySpark job
+                            to YARN via <code>spark-submit --master yarn</code> on the Dataproc master node.
+                            YARN allocates executors across the cluster nodes and manages job lifecycle.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ===== CLASSIFIER ===== -->
+                <div class="page" id="page-classifier">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">ML Classifier</div>
+                            <div class="info-grid">
+                                <span class="info-label">Algorithm</span><span class="info-value">Random Forest</span>
+                                <span class="info-label">Status</span><span class="info-value" id="clf-status">--</span>
+                                <span class="info-label">Features</span><span class="info-value">dataset_size, complexity, memory, cpu_cores, priority, duration</span>
+                                <span class="info-label">Classes</span><span class="info-value">small_quick, medium_cpu, large_intensive</span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Classification Rules (Fallback)</div>
+                            <p style="font-size:13px;color:#4a5568;line-height:1.8;">
+                                When no trained model is loaded, rule-based classification is used:<br>
+                                <b>small_quick:</b> dataset &lt; 500MB AND complexity &lt; 4<br>
+                                <b>large_intensive:</b> dataset &gt; 2000MB OR complexity &gt; 7<br>
+                                <b>medium_cpu:</b> everything else
+                            </p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Test Classifier</div>
                         <div class="form-grid">
-                            <div class="form-group">
-                                <label>Job Type</label>
-                                <select id="job-type" class="form-input">
-                                    <option value="batch_analytics">Batch Analytics</option>
-                                    <option value="data_processing">Data Processing</option>
-                                    <option value="training">ML Training</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Dataset Size (MB)</label>
-                                <input type="number" id="dataset-size" class="form-input" value="2500">
-                            </div>
-                            <div class="form-group">
-                                <label>Complexity (1-10)</label>
-                                <input type="number" id="code-complexity" class="form-input" min="1" max="10" value="6">
-                            </div>
-                            <div class="form-group">
-                                <label>Memory (MB)</label>
-                                <input type="number" id="memory-req" class="form-input" value="2048">
-                            </div>
-                            <div class="form-group">
-                                <label>CPU Cores</label>
-                                <input type="number" id="cpu-req" class="form-input" value="4">
-                            </div>
-                            <div class="form-group">
-                                <label>Priority (1-10)</label>
-                                <input type="number" id="priority" class="form-input" min="1" max="10" value="5">
-                            </div>
+                            <div class="form-group"><label>Dataset Size (MB)</label><input type="number" id="tc-size" class="form-input" value="500"></div>
+                            <div class="form-group"><label>Complexity (1-10)</label><input type="number" id="tc-complexity" class="form-input" value="5"></div>
+                            <div class="form-group"><label>Memory (MB)</label><input type="number" id="tc-memory" class="form-input" value="2048"></div>
+                            <div class="form-group"><label>CPU Cores</label><input type="number" id="tc-cpu" class="form-input" value="4"></div>
                         </div>
-                        <div style="margin-top:12px;display:flex;gap:10px;">
-                            <button type="button" class="btn" style="background:#edf2f7;color:#2d3748;" onclick="previewClassification()">Preview Classification</button>
-                            <button type="submit" class="btn btn-primary">Submit Job</button>
-                        </div>
-                    </form>
-                    <div class="classification-result" id="classification-result">
-                        <div class="class-header">
-                            <span class="class-label">ML Classification: <span id="class-name">-</span></span>
-                            <span class="class-confidence" id="class-confidence">-</span>
-                        </div>
-                        <div class="class-details">
-                            <div class="class-detail-item">
-                                <div class="class-detail-value" id="class-target">-</div>
-                                <div class="class-detail-label">Execution Target</div>
-                            </div>
-                            <div class="class-detail-item">
-                                <div class="class-detail-value" id="class-duration">-</div>
-                                <div class="class-detail-label">Est. Duration</div>
-                            </div>
-                            <div class="class-detail-item">
-                                <div class="class-detail-value" id="class-workers">-</div>
-                                <div class="class-detail-label">Workers</div>
-                            </div>
-                        </div>
+                        <button class="btn btn-primary" onclick="testClassify()" style="margin-top:12px;">Classify</button>
+                        <div id="tc-result" style="margin-top:12px;"></div>
                     </div>
                 </div>
+
+                <!-- ===== PREDICTIONS ===== -->
+                <div class="page" id="page-predictions">
+                    <div class="card">
+                        <div class="card-title">Classification History</div>
+                        <table><thead><tr><th>Job ID</th><th>Predicted Class</th><th>Confidence</th><th>Target</th><th>Dataset Size</th><th>Complexity</th></tr></thead>
+                        <tbody id="pred-table"><tr><td colspan="6" class="empty">Submit jobs to see classification history</td></tr></tbody></table>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000';
+        const API = 'http://localhost:8000';
         let chart = null;
-        let resourceHistory = { labels: [], cpu: [], memory: [] };
+        const hist = { labels: [], cpu: [], mem: [] };
+        let predictions = [];
+        let allJobs = [];
 
-        function initChart() {
-            const ctx = document.getElementById('resourceChart');
-            if (!ctx) return;
-            if (chart) {
-                chart.data.labels = resourceHistory.labels;
-                chart.data.datasets[0].data = resourceHistory.cpu;
-                chart.data.datasets[1].data = resourceHistory.memory;
-                chart.update('none');
-                return;
+        // ===== NAVIGATION =====
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+            const page = document.getElementById('page-' + name);
+            if (page) page.classList.add('active');
+            const titles = { dashboard:'Dashboard', jobs:'Jobs', submit:'Submit Job', dataproc:'Dataproc', kafka:'Kafka', yarn:'YARN', classifier:'Classifier', predictions:'Predictions' };
+            document.getElementById('page-title').textContent = titles[name] || name;
+            const items = document.querySelectorAll('.sidebar-item');
+            const map = { dashboard:0, jobs:1, submit:2, dataproc:3, kafka:4, yarn:5, classifier:6, predictions:7 };
+            if (map[name] !== undefined) items[map[name]].classList.add('active');
+            if (name === 'jobs') loadJobs();
+            if (name === 'dataproc') checkDataproc();
+            if (name === 'kafka') loadEvents();
+            if (name === 'classifier') loadClassifierStatus();
+        }
+
+        // ===== HELPERS =====
+        function sBadge(s) {
+            const c = { running:'b-running', success:'b-success', failed:'b-failed', queued:'b-queued', submitted:'b-queued' }[s] || 'b-queued';
+            return '<span class="badge ' + c + '">' + s + '</span>';
+        }
+        function tBadge(t) {
+            return t === 'dataproc_yarn' ? '<span class="badge b-yarn">YARN</span>' : '<span class="badge b-local">Local</span>';
+        }
+
+        // ===== DASHBOARD =====
+        async function updateDashboard() {
+            try {
+                const r = await fetch(API + '/api/cluster/status');
+                const d = await r.json();
+                document.getElementById('conn-status').textContent = 'Connected';
+                document.getElementById('conn-status').style.color = '#48bb78';
+                document.getElementById('m-running').textContent = d.running_jobs || 0;
+                document.getElementById('m-success').textContent = d.success_jobs || 0;
+                document.getElementById('m-failed').textContent = d.failed_jobs || 0;
+                document.getElementById('m-local').textContent = d.local_jobs || 0;
+                document.getElementById('m-cluster').textContent = d.cluster_jobs || 0;
+                document.getElementById('m-cpu').textContent = Math.round(d.cpu_usage||0) + '%';
+                document.getElementById('bar-cpu').style.width = (d.cpu_usage||0) + '%';
+                document.getElementById('val-cpu').textContent = Math.round(d.cpu_usage||0) + '%';
+                document.getElementById('bar-mem').style.width = (d.memory_usage||0) + '%';
+                document.getElementById('val-mem').textContent = Math.round(d.memory_usage||0) + '%';
+                document.getElementById('bar-disk').style.width = (d.disk_usage||0) + '%';
+                document.getElementById('val-disk').textContent = Math.round(d.disk_usage||0) + '%';
+
+                var dpB = document.getElementById('badge-dp'), kfB = document.getElementById('badge-kf');
+                var dpD = document.getElementById('dp-dot'), kfD = document.getElementById('kf-dot');
+                if (d.dataproc_connected) { dpB.className='badge b-connected'; dpB.textContent='Connected'; dpD.className='status-dot dot-green'; }
+                else { dpB.className='badge b-offline'; dpB.textContent='Offline'; dpD.className='status-dot dot-red'; }
+                if (d.kafka_connected) { kfB.className='badge b-connected'; kfB.textContent='Connected'; kfD.className='status-dot dot-green'; }
+                else { kfB.className='badge b-offline'; kfB.textContent='Offline'; kfD.className='status-dot dot-yellow'; }
+
+                var tbody = document.getElementById('dash-jobs');
+                if (d.jobs && d.jobs.length > 0) {
+                    allJobs = d.jobs;
+                    tbody.innerHTML = d.jobs.slice(0,5).map(function(j) {
+                        return '<tr onclick="viewJob(\'' + j.job_id + '\')" style="cursor:pointer"><td style="font-family:monospace;font-size:11px;">' + (j.job_id||'').slice(0,22) + '</td><td>' + sBadge(j.status) + '</td><td>' + tBadge(j.execution_target) + '</td><td>' + (j.job_type||'-') + '</td></tr>';
+                    }).join('');
+                }
+
+                var now = new Date().toLocaleTimeString();
+                hist.labels.push(now); hist.cpu.push(Math.round(d.cpu_usage||0)); hist.mem.push(Math.round(d.memory_usage||0));
+                if (hist.labels.length > 30) { hist.labels.shift(); hist.cpu.shift(); hist.mem.shift(); }
+                updateChart();
+            } catch(e) {
+                document.getElementById('conn-status').textContent = 'Disconnected';
+                document.getElementById('conn-status').style.color = '#f56565';
             }
+        }
+
+        function updateChart() {
+            var ctx = document.getElementById('activityChart');
+            if (!ctx) return;
+            if (chart) { chart.data.labels = hist.labels; chart.data.datasets[0].data = hist.cpu; chart.data.datasets[1].data = hist.mem; chart.update('none'); return; }
             chart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: resourceHistory.labels,
-                    datasets: [
-                        { label: 'CPU %', data: resourceHistory.cpu, borderColor: '#4299e1', backgroundColor: 'rgba(66,153,225,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 2 },
-                        { label: 'Memory %', data: resourceHistory.memory, borderColor: '#48bb78', backgroundColor: 'rgba(72,187,120,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 2 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    animation: { duration: 0 },
-                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } },
-                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11, weight: 600 } } } }
+                data: { labels: hist.labels, datasets: [
+                    { label: 'CPU %', data: hist.cpu, borderColor: '#4299e1', backgroundColor: 'rgba(66,153,225,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 1 },
+                    { label: 'Memory %', data: hist.mem, borderColor: '#48bb78', backgroundColor: 'rgba(72,187,120,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 1 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } } },
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11 } } } }
                 }
             });
         }
 
-        function statusBadge(status) {
-            const cls = { running: 'badge-running', success: 'badge-success', failed: 'badge-failed', submitted: 'badge-submitted' }[status] || 'badge-submitted';
-            return `<span class="badge ${cls}">${status}</span>`;
-        }
-
-        function targetBadge(target) {
-            if (target === 'dataproc_yarn') return '<span class="badge badge-cluster">YARN</span>';
-            return '<span class="badge badge-local">Local</span>';
-        }
-
-        async function updateDashboard() {
+        async function updateDashEvents() {
             try {
-                const res = await fetch(`${API_BASE}/api/cluster/status`);
-                const d = await res.json();
-
-                document.getElementById('connection-status').textContent = 'Connected';
-                document.getElementById('connection-status').style.color = '#48bb78';
-
-                document.getElementById('running-jobs').textContent = d.running_jobs || 0;
-                document.getElementById('success-jobs').textContent = d.success_jobs || 0;
-                document.getElementById('failed-jobs').textContent = d.failed_jobs || 0;
-                document.getElementById('local-jobs').textContent = d.local_jobs || 0;
-                document.getElementById('cluster-jobs').textContent = d.cluster_jobs || 0;
-                document.getElementById('cpu-usage').textContent = Math.round(d.cpu_usage || 0) + '%';
-
-                document.getElementById('cpu-bar').style.width = (d.cpu_usage || 0) + '%';
-                document.getElementById('cpu-val').textContent = Math.round(d.cpu_usage || 0) + '%';
-                document.getElementById('mem-bar').style.width = (d.memory_usage || 0) + '%';
-                document.getElementById('mem-val').textContent = Math.round(d.memory_usage || 0) + '%';
-                document.getElementById('disk-bar').style.width = (d.disk_usage || 0) + '%';
-                document.getElementById('disk-val').textContent = Math.round(d.disk_usage || 0) + '%';
-
-                // Dataproc/Kafka status
-                const dpBadge = document.getElementById('dataproc-badge');
-                const kBadge = document.getElementById('kafka-badge');
-                const dpDot = document.getElementById('dataproc-dot');
-                const kDot = document.getElementById('kafka-dot');
-
-                if (d.dataproc_connected) { dpBadge.className = 'badge badge-cluster'; dpBadge.textContent = 'Connected'; dpDot.className = 'status-dot green'; }
-                else { dpBadge.className = 'badge badge-failed'; dpBadge.textContent = 'Offline'; dpDot.className = 'status-dot red'; }
-                if (d.kafka_connected) { kBadge.className = 'badge badge-cluster'; kBadge.textContent = 'Connected'; kDot.className = 'status-dot green'; }
-                else { kBadge.className = 'badge badge-small'; kBadge.textContent = 'Offline'; kDot.className = 'status-dot yellow'; }
-
-                // Job table
-                const tbody = document.getElementById('job-table-body');
-                if (d.jobs && d.jobs.length > 0) {
-                    tbody.innerHTML = d.jobs.map(j => `<tr>
-                        <td style="font-family:monospace;font-size:12px;">${(j.job_id||'').substring(0,20)}</td>
-                        <td>${statusBadge(j.status)}</td>
-                        <td>${targetBadge(j.execution_target)}</td>
-                        <td>${j.job_type || '-'}</td>
-                    </tr>`).join('');
-                }
-
-                // Chart
-                const now = new Date().toLocaleTimeString();
-                resourceHistory.labels.push(now);
-                resourceHistory.cpu.push(Math.round(d.cpu_usage || 0));
-                resourceHistory.memory.push(Math.round(d.memory_usage || 0));
-                if (resourceHistory.labels.length > 30) { resourceHistory.labels.shift(); resourceHistory.cpu.shift(); resourceHistory.memory.shift(); }
-                initChart();
-
-            } catch (e) {
-                document.getElementById('connection-status').textContent = 'Disconnected';
-                document.getElementById('connection-status').style.color = '#f56565';
-            }
-        }
-
-        async function updateEvents() {
-            try {
-                const res = await fetch(`${API_BASE}/api/events?limit=20`);
-                const d = await res.json();
-                const el = document.getElementById('event-list');
-                const countEl = document.getElementById('event-count');
+                var r = await fetch(API + '/api/events?limit=10');
+                var d = await r.json();
+                var el = document.getElementById('dash-events');
                 if (d.events && d.events.length > 0) {
-                    countEl.textContent = `(${d.events.length} events)`;
-                    el.innerHTML = d.events.map(e => `<div class="event-item">
-                        <span class="event-time">${(e.timestamp||'').substring(11,19)}</span>
-                        <span class="event-type">${e.event_type}</span>
-                        <span class="event-detail">${e.job_id} ${JSON.stringify(e.data||{}).substring(0,60)}</span>
-                    </div>`).join('');
+                    el.innerHTML = d.events.map(function(e) {
+                        return '<div class="event-item"><span class="event-time">' + (e.timestamp||'').substring(11,19) + '</span><span class="event-type">' + e.event_type + '</span><span class="event-detail">' + (e.job_id||'') + '</span></div>';
+                    }).join('');
                 }
             } catch(e) {}
         }
 
-        async function previewClassification() {
-            const data = getFormData();
+        // ===== JOBS =====
+        async function loadJobs(statusFilter) {
             try {
-                const res = await fetch(`${API_BASE}/api/classify`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
-                const r = await res.json();
-                const el = document.getElementById('classification-result');
-                el.classList.add('show');
-                document.getElementById('class-name').textContent = r.classification.job_class;
-                document.getElementById('class-confidence').textContent = `${(r.classification.confidence * 100).toFixed(0)}% confidence`;
-                document.getElementById('class-target').textContent = r.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local';
-                document.getElementById('class-duration').textContent = r.resource_estimate.estimated_duration_sec + 's';
-                document.getElementById('class-workers').textContent = r.resource_estimate.recommended_workers;
-            } catch(e) {
-                document.getElementById('message').innerHTML = `<div class="alert error">Could not classify: ${e.message}</div>`;
-            }
+                var url = statusFilter ? API + '/api/jobs?status=' + statusFilter : API + '/api/jobs';
+                var r = await fetch(url);
+                var d = await r.json();
+                allJobs = d.jobs || [];
+                renderJobs(allJobs);
+            } catch(e) { console.error(e); }
+        }
+        function filterJobs(s) { loadJobs(s); }
+        function renderJobs(jobs) {
+            var tb = document.getElementById('jobs-table');
+            if (!jobs.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No jobs found</td></tr>'; return; }
+            tb.innerHTML = jobs.map(function(j) {
+                return '<tr><td style="font-family:monospace;font-size:11px;">' + (j.job_id||'').slice(0,22) + '</td><td>' + sBadge(j.status) + '</td><td>' + tBadge(j.execution_target) + '</td><td>' + (j.job_type||'-') + '</td><td>' + (j.progress != null ? j.progress + '%' : '-') + '</td><td>' + (j.execution_time ? j.execution_time.toFixed(1) + 's' : '-') + '</td><td>' + (j.records_processed ? j.records_processed.toLocaleString() : '-') + '</td><td><button class="btn btn-sm btn-secondary" onclick="viewJob(\'' + j.job_id + '\')">View</button></td></tr>';
+            }).join('');
         }
 
+        async function viewJob(jobId) {
+            showPage('jobs');
+            try {
+                var res = await Promise.all([fetch(API + '/api/jobs/' + jobId), fetch(API + '/api/jobs/' + jobId + '/output')]);
+                var st = await res[0].json();
+                var out = await res[1].json();
+                document.getElementById('job-detail-card').style.display = 'block';
+                document.getElementById('job-detail-info').innerHTML =
+                    '<span class="info-label">Job ID</span><span class="info-value" style="font-family:monospace;">' + st.job_id + '</span>' +
+                    '<span class="info-label">Status</span><span class="info-value">' + sBadge(st.status) + '</span>' +
+                    '<span class="info-label">Target</span><span class="info-value">' + tBadge(st.execution_target) + '</span>' +
+                    '<span class="info-label">Type</span><span class="info-value">' + (st.job_type||'-') + '</span>' +
+                    '<span class="info-label">Progress</span><span class="info-value">' + (st.progress != null ? st.progress + '%' : '-') + '</span>' +
+                    '<span class="info-label">Records</span><span class="info-value">' + (st.records_processed ? st.records_processed.toLocaleString() : '-') + '</span>' +
+                    '<span class="info-label">Duration</span><span class="info-value">' + (st.execution_time ? st.execution_time.toFixed(2) + 's' : '-') + '</span>' +
+                    '<span class="info-label">Created</span><span class="info-value">' + (st.created_at||'-') + '</span>' +
+                    '<span class="info-label">Completed</span><span class="info-value">' + (st.completed_at||'-') + '</span>' +
+                    '<span class="info-label">PID</span><span class="info-value">' + (st.pid||'-') + '</span>' +
+                    (st.error ? '<span class="info-label">Error</span><span class="info-value" style="color:#e53e3e;">' + st.error + '</span>' : '');
+                var logEl = document.getElementById('job-detail-log');
+                if (out.output) { var t = out.output.length > 3000 ? '...' + out.output.slice(-3000) : out.output; logEl.textContent = t; }
+                else { logEl.textContent = 'No output available'; }
+            } catch(e) { console.error(e); }
+        }
+
+        // ===== SUBMIT =====
         function getFormData() {
-            return {
-                job_type: document.getElementById('job-type').value,
-                dataset_size_mb: parseInt(document.getElementById('dataset-size').value),
-                code_complexity_score: parseInt(document.getElementById('code-complexity').value),
-                memory_requirement_mb: parseInt(document.getElementById('memory-req').value),
-                cpu_requirement_cores: parseInt(document.getElementById('cpu-req').value),
-                priority: parseInt(document.getElementById('priority').value),
-            };
+            return { job_type: document.getElementById('f-type').value, dataset_size_mb: parseInt(document.getElementById('f-size').value), code_complexity_score: parseInt(document.getElementById('f-complexity').value), memory_requirement_mb: parseInt(document.getElementById('f-memory').value), cpu_requirement_cores: parseInt(document.getElementById('f-cpu').value), priority: parseInt(document.getElementById('f-priority').value) };
+        }
+        async function previewClassify() {
+            try {
+                var r = await fetch(API + '/api/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
+                var d = await r.json();
+                var el = document.getElementById('cls-result'); el.classList.add('show');
+                document.getElementById('cls-name').textContent = d.classification.job_class;
+                document.getElementById('cls-conf').textContent = (d.classification.confidence * 100).toFixed(0) + '% confidence';
+                document.getElementById('cls-target').textContent = d.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local';
+                document.getElementById('cls-dur').textContent = d.resource_estimate.estimated_duration_sec + 's';
+                document.getElementById('cls-workers').textContent = d.resource_estimate.recommended_workers;
+                document.getElementById('cls-cost').textContent = '$' + d.resource_estimate.estimated_cost_usd;
+            } catch(e) { document.getElementById('submit-msg').innerHTML = '<div class="alert alert-err">Classification failed: ' + e.message + '</div>'; }
+        }
+        async function submitJob(e) {
+            e.preventDefault();
+            var msg = document.getElementById('submit-msg');
+            try {
+                var r = await fetch(API + '/api/jobs/submit', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
+                var d = await r.json();
+                if (r.ok) {
+                    var target = d.execution_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'locally';
+                    var cls = d.classification ? d.classification.job_class : 'unknown';
+                    msg.innerHTML = '<div class="alert alert-ok">Job <b>' + d.job_id + '</b> classified as <b>' + cls + '</b> &rarr; running <b>' + target + '</b></div>';
+                    predictions.push({ job_id: d.job_id, cls: cls, conf: d.classification ? d.classification.confidence : null, target: d.execution_target, size: getFormData().dataset_size_mb, complexity: getFormData().code_complexity_score });
+                    updatePredictions();
+                    setTimeout(updateDashboard, 1000);
+                } else { msg.innerHTML = '<div class="alert alert-err">' + (d.detail || 'Submission failed') + '</div>'; }
+            } catch(e) { msg.innerHTML = '<div class="alert alert-err">Failed: ' + e.message + '</div>'; }
         }
 
-        document.getElementById('job-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msg = document.getElementById('message');
+        // ===== DATAPROC =====
+        async function checkDataproc() {
+            var el = document.getElementById('dp-info');
+            el.innerHTML = '<span class="info-label">Status</span><span class="info-value">Checking...</span>';
             try {
-                const res = await fetch(`${API_BASE}/api/jobs/submit`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
-                const r = await res.json();
-                if (res.ok) {
-                    const target = r.execution_target === 'dataproc_yarn' ? 'Dataproc YARN cluster' : 'locally';
-                    const cls = r.classification ? r.classification.job_class : 'unknown';
-                    msg.innerHTML = `<div class="alert success">Job <b>${r.job_id}</b> classified as <b>${cls}</b> and submitted to <b>${target}</b></div>`;
-                    setTimeout(() => { updateDashboard(); updateEvents(); }, 500);
-                } else {
-                    msg.innerHTML = `<div class="alert error">${r.detail || 'Submission failed'}</div>`;
-                }
-            } catch(e) {
-                msg.innerHTML = `<div class="alert error">Failed: ${e.message}</div>`;
-            }
-        });
+                var r = await fetch(API + '/api/dataproc/status');
+                var d = await r.json();
+                el.innerHTML =
+                    '<span class="info-label">gcloud CLI</span><span class="info-value">' + (d.gcloud_available ? '<span class="badge b-connected">Available</span>' : '<span class="badge b-offline">Not Found</span>') + '</span>' +
+                    '<span class="info-label">SSH Connection</span><span class="info-value">' + (d.connection && d.connection.connected ? '<span class="badge b-connected">Connected</span>' : '<span class="badge b-offline">' + (d.connection && d.connection.error ? d.connection.error : 'Failed') + '</span>') + '</span>' +
+                    (d.connection && d.connection.hostname ? '<span class="info-label">Hostname</span><span class="info-value">' + d.connection.hostname + '</span>' : '');
+            } catch(e) { el.innerHTML = '<span class="info-label">Status</span><span class="info-value"><span class="badge b-offline">API Unreachable</span></span>'; }
+        }
+        async function loadHDFS() {
+            var el = document.getElementById('hdfs-content'); el.innerHTML = '<div class="empty">Loading HDFS...</div>';
+            try {
+                var r = await fetch(API + '/api/dataproc/hdfs');
+                var d = await r.json();
+                if (d.error) { el.innerHTML = '<div class="alert alert-err">' + d.error + '</div>'; return; }
+                if (d.files && d.files.length > 0) { el.innerHTML = '<table><thead><tr><th>Path / File</th></tr></thead><tbody>' + d.files.map(function(f) { return '<tr><td style="font-family:monospace;font-size:12px;">' + f + '</td></tr>'; }).join('') + '</tbody></table>'; }
+                else { el.innerHTML = '<div class="empty">No files found or unable to connect</div>'; }
+            } catch(e) { el.innerHTML = '<div class="alert alert-err">Could not load HDFS: ' + e.message + '</div>'; }
+        }
 
+        // ===== KAFKA =====
+        async function loadEvents() {
+            try {
+                var r = await fetch(API + '/api/events?limit=50');
+                var d = await r.json();
+                document.getElementById('kf-status').innerHTML = d.kafka_enabled ? '<span class="badge b-connected">Connected</span>' : '<span class="badge b-offline">Offline (logging only)</span>';
+                document.getElementById('kf-count').textContent = d.events ? '(' + d.events.length + ' events)' : '';
+                var el = document.getElementById('kafka-events');
+                if (d.events && d.events.length > 0) {
+                    el.innerHTML = d.events.map(function(e) {
+                        return '<div class="event-item"><span class="event-time">' + (e.timestamp||'').substring(11,19) + '</span><span class="event-type">' + e.event_type + '</span><span class="event-detail">' + (e.job_id||'') + ' ' + (e.data ? JSON.stringify(e.data).substring(0,80) : '') + '</span></div>';
+                    }).join('');
+                } else { el.innerHTML = '<div class="empty">No events. Submit jobs to generate events.</div>'; }
+            } catch(e) { console.error(e); }
+        }
+
+        // ===== YARN =====
+        async function loadYARN() {
+            var el = document.getElementById('yarn-content'); el.innerHTML = '<div class="empty">Fetching YARN status...</div>';
+            try {
+                var r = await fetch(API + '/api/dataproc/yarn');
+                var d = await r.json();
+                if (d.error) { el.innerHTML = '<div class="alert alert-err">' + d.error + '</div>'; return; }
+                if (d.output) { el.innerHTML = '<div class="log-box">' + d.output + '</div>'; }
+                else { el.innerHTML = '<div class="log-box">' + JSON.stringify(d, null, 2) + '</div>'; }
+            } catch(e) { el.innerHTML = '<div class="alert alert-err">Could not fetch YARN: ' + e.message + '</div>'; }
+        }
+
+        // ===== CLASSIFIER =====
+        async function loadClassifierStatus() {
+            try {
+                var r = await fetch(API + '/health');
+                var d = await r.json();
+                var s = d.components ? d.components.ml_classifier : null;
+                document.getElementById('clf-status').innerHTML = s === true ? '<span class="badge b-connected">Trained Model</span>' : '<span class="badge" style="background:#fefcbf;color:#975a16;">Rule-based Fallback</span>';
+            } catch(e) {}
+        }
+        async function testClassify() {
+            var data = { dataset_size_mb: parseInt(document.getElementById('tc-size').value), code_complexity_score: parseInt(document.getElementById('tc-complexity').value), memory_requirement_mb: parseInt(document.getElementById('tc-memory').value), cpu_requirement_cores: parseInt(document.getElementById('tc-cpu').value), priority: 5, job_type: 'batch_analytics' };
+            try {
+                var r = await fetch(API + '/api/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+                var d = await r.json();
+                var cls = d.classification.job_class;
+                var colors = { small_quick: '#48bb78', medium_cpu: '#ed8936', large_intensive: '#e53e3e' };
+                document.getElementById('tc-result').innerHTML = '<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;"><div style="font-size:18px;font-weight:700;color:' + (colors[cls]||'#2d3748') + ';">' + cls + '</div><div style="font-size:12px;color:#718096;margin-top:4px;">Target: <b>' + (d.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local') + '</b> | Duration: <b>' + d.resource_estimate.estimated_duration_sec + 's</b> | Workers: <b>' + d.resource_estimate.recommended_workers + '</b> | Confidence: <b>' + (d.classification.confidence * 100).toFixed(0) + '%</b></div><div style="margin-top:8px;font-size:12px;color:#a0aec0;">Probabilities: small=' + (d.classification.class_probabilities.small_quick*100).toFixed(0) + '%, medium=' + (d.classification.class_probabilities.medium_cpu*100).toFixed(0) + '%, large=' + (d.classification.class_probabilities.large_intensive*100).toFixed(0) + '%</div></div>';
+            } catch(e) { document.getElementById('tc-result').innerHTML = '<div class="alert alert-err">Error: ' + e.message + '</div>'; }
+        }
+
+        // ===== PREDICTIONS =====
+        function updatePredictions() {
+            var tb = document.getElementById('pred-table');
+            if (!predictions.length) return;
+            tb.innerHTML = predictions.slice().reverse().map(function(p) {
+                return '<tr><td style="font-family:monospace;font-size:11px;">' + (p.job_id||'').slice(0,22) + '</td><td><b>' + p.cls + '</b></td><td>' + (p.conf ? (p.conf*100).toFixed(0) + '%' : '-') + '</td><td>' + tBadge(p.target) + '</td><td>' + p.size + ' MB</td><td>' + p.complexity + '/10</td></tr>';
+            }).join('');
+        }
+
+        // ===== REFRESH =====
+        function refreshAll() { updateDashboard(); updateDashEvents(); }
+
+        // ===== INIT =====
         updateDashboard();
-        updateEvents();
-        initChart();
+        updateDashEvents();
         setInterval(updateDashboard, 5000);
-        setInterval(updateEvents, 5000);
+        setInterval(updateDashEvents, 5000);
     </script>
 </body>
 </html>
