@@ -91,7 +91,7 @@ def start_api_server(port=8000):
     try:
         os.chdir(api_dir)
         subprocess.run(
-            [sys.executable, '-m', 'uvicorn', 'main_enhanced:app', f'--port={port}'],
+            [sys.executable, '-m', 'uvicorn', 'start_server:app', f'--port={port}'],
             check=False
         )
     except Exception as e:

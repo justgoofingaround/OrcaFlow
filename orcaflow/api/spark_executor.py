@@ -9,6 +9,7 @@ Manages the complete lifecycle of PySpark jobs:
 """
 
 import os
+import sys
 import json
 import subprocess
 import time
@@ -142,19 +143,20 @@ class SparkJobExecutor:
     def _get_python_executable(self) -> str:
         """
         Get Python executable path from virtual environment.
-        
+
         Returns:
             Path to Python executable
         """
-        python_exe = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "..",
-            ".venv",
-            "Scripts",
-            "python.exe"
-        )
-        return python_exe
+        base = os.path.join(os.path.dirname(__file__), "..", "..")
+        if os.name == 'nt':
+            python_exe = os.path.join(base, ".venv", "Scripts", "python.exe")
+        else:
+            python_exe = os.path.join(base, ".venv", "bin", "python")
+
+        if os.path.exists(python_exe):
+            return python_exe
+        # Fallback to current interpreter
+        return sys.executable
     
     def _monitor_job(self, job_id: str) -> None:
         """
@@ -359,177 +361,6 @@ class SparkJobExecutor:
             
             except Exception as e:
                 logger.error(f"Failed to cancel job {job_id}: {e}")
-                return False
-        
-        return False
-
-
-# Global executor instance
-executor = SparkJobExecutor()
-                cwd=job_output_dir,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
-            )
-            
-            self.jobs[job_id]["process"] = process
-            self.jobs[job_id]["pid"] = process.pid
-            
-            # Start monitoring thread
-            monitor_thread = threading.Thread(
-                target=self._monitor_job,
-                args=(job_id,),
-                daemon=True
-            )
-            monitor_thread.start()
-            
-            return {
-                "job_id": job_id,
-                "status": "running",
-                "pid": process.pid
-            }
-        
-        except Exception as e:
-            self.jobs[job_id]["status"] = "failed"
-            self.jobs[job_id]["error"] = str(e)
-            raise
-    
-    def _monitor_job(self, job_id):
-        """Monitor job progress and completion"""
-        job = self.jobs[job_id]
-        process = job["process"]
-        
-        try:
-            # Wait for process to complete
-            return_code = process.wait()
-            
-            # Read output
-            try:
-                with open(job["log_file"], 'r') as f:
-                    output = f.read()
-                job["output"] = output
-            except:
-                job["output"] = ""
-            
-            if return_code == 0:
-                job["status"] = "success"
-                job["progress"] = 100
-                
-                # Try to parse results from output
-                try:
-                    if "Job Completion Report" in output:
-                        # Extract metrics from output
-                        lines = output.split('\n')
-                        for i, line in enumerate(lines):
-                            if "Total records processed:" in line:
-                                try:
-                                    count = int(line.split(':')[1].strip().replace(',', ''))
-                                    job["records_processed"] = count
-                                except:
-                                    pass
-                            elif "Execution time:" in line:
-                                try:
-                                    time_str = line.split(':')[1].strip().split()[0]
-                                    job["execution_time"] = float(time_str)
-                                except:
-                                    pass
-                except:
-                    pass
-            else:
-                job["status"] = "failed"
-                job["error"] = f"Process exited with code {return_code}"
-            
-            job["completed_at"] = datetime.now().isoformat()
-        
-        except Exception as e:
-            job["status"] = "failed"
-            job["error"] = str(e)
-            job["completed_at"] = datetime.now().isoformat()
-    
-    def get_job_status(self, job_id):
-        """Get job status"""
-        if job_id not in self.jobs:
-            return None
-        
-        job = self.jobs[job_id]
-        
-        # If job is still running, check process status and update progress
-        if job["status"] == "running" and job["process"]:
-            try:
-                if job["process"].poll() is None:
-                    # Still running
-                    try:
-                        # Try to get CPU/memory usage as progress indicator
-                        p = psutil.Process(job["pid"])
-                        cpu_percent = p.cpu_percent(interval=0.1)
-                        memory_info = p.memory_info()
-                        memory_mb = memory_info.rss / (1024 * 1024)
-                        
-                        # Simple progress heuristic: progress = min(100, time_elapsed / 2)
-                        elapsed = (datetime.fromisoformat(job["started_at"]) - datetime.now()).total_seconds()
-                        job["progress"] = min(95, int(abs(elapsed) / 2))
-                        job["cpu_usage"] = cpu_percent
-                        job["memory_usage"] = memory_mb
-                    except:
-                        pass
-            except:
-                pass
-        
-        return {
-            "job_id": job["job_id"],
-            "status": job["status"],
-            "progress": job.get("progress", 0),
-            "created_at": job["created_at"],
-            "started_at": job.get("started_at"),
-            "completed_at": job.get("completed_at"),
-            "job_type": job["job_type"],
-            "records_processed": job.get("records_processed"),
-            "execution_time": job.get("execution_time"),
-            "error": job.get("error"),
-            "pid": job.get("pid")
-        }
-    
-    def list_jobs(self, status=None):
-        """List all jobs"""
-        jobs = []
-        for job_id, job in self.jobs.items():
-            job_status = self.get_job_status(job_id)
-            if status is None or job_status["status"] == status:
-                jobs.append(job_status)
-        return jobs
-    
-    def get_job_output(self, job_id):
-        """Get job output"""
-        if job_id not in self.jobs:
-            return None
-        
-        job = self.jobs[job_id]
-        
-        try:
-            with open(job["log_file"], 'r') as f:
-                return f.read()
-        except:
-            return job.get("output", "")
-    
-    def cancel_job(self, job_id):
-        """Cancel a running job"""
-        if job_id not in self.jobs:
-            return False
-        
-        job = self.jobs[job_id]
-        
-        if job["process"] and job["status"] == "running":
-            try:
-                if os.name == 'nt':
-                    # Windows
-                    os.killpg(os.getpgid(job["process"].pid), 9)
-                else:
-                    # Unix
-                    job["process"].terminate()
-                    job["process"].wait(timeout=5)
-                
-                job["status"] = "cancelled"
-                job["completed_at"] = datetime.now().isoformat()
-                return True
-            except:
                 return False
         
         return False

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,816 +6,489 @@
     <title>OrcaFlow - Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f7fa;
-            color: #1a202c;
-        }
-
-        .wrapper {
-            display: flex;
-            min-height: 100vh;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a202c; }
+        .wrapper { display: flex; min-height: 100vh; }
 
         /* SIDEBAR */
-        .sidebar {
-            width: 280px;
-            background: white;
-            padding: 30px 0;
-            border-right: 1px solid #e2e8f0;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.04);
-            overflow-y: auto;
-        }
+        .sidebar { width: 260px; background: white; padding: 30px 0; border-right: 1px solid #e2e8f0; }
+        .logo { padding: 0 24px 30px; font-size: 20px; font-weight: 700; }
+        .sidebar-label { padding: 0 24px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #a0aec0; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .sidebar-section { margin-bottom: 30px; }
+        .sidebar-item { padding: 10px 24px; color: #4a5568; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; }
+        .sidebar-item:hover { background: #f7fafc; }
+        .sidebar-item.active { background: #edf2f7; color: #2d3748; border-left-color: #4299e1; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
+        .status-dot.green { background: #48bb78; }
+        .status-dot.red { background: #f56565; }
+        .status-dot.yellow { background: #ecc94b; }
 
-        .logo {
-            padding: 0 24px 30px;
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a202c;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        /* MAIN */
+        .main { flex: 1; overflow: auto; }
+        .header { background: white; padding: 20px 32px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 22px; font-weight: 700; }
+        .content { padding: 24px 32px; }
 
-        .sidebar-section {
-            margin-bottom: 40px;
-        }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-primary { background: #4299e1; color: white; }
+        .btn-primary:hover { background: #3182ce; }
 
-        .sidebar-label {
-            padding: 0 24px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #a0aec0;
-            letter-spacing: 0.5px;
-            margin-bottom: 15px;
-        }
+        /* METRICS */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .metric-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .metric-label { font-size: 12px; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+        .metric-value { font-size: 28px; font-weight: 700; color: #1a202c; }
+        .metric-sub { font-size: 11px; color: #a0aec0; margin-top: 4px; }
 
-        .sidebar-item {
-            padding: 12px 24px;
-            color: #4a5568;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: all 0.2s;
-            border-left: 3px solid transparent;
-        }
+        /* CARDS */
+        .cards-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; padding: 20px; }
+        .card-title { font-size: 15px; font-weight: 700; color: #1a202c; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
 
-        .sidebar-item:hover {
-            background: #f7fafc;
-            color: #2d3748;
-        }
+        /* PROGRESS BARS */
+        .resource-row { padding: 10px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .resource-row:last-child { border-bottom: none; }
+        .resource-name { font-size: 13px; color: #4a5568; font-weight: 500; }
+        .resource-right { display: flex; align-items: center; gap: 10px; }
+        .progress-bar { width: 100px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+        .progress-fill.blue { background: #4299e1; }
+        .progress-fill.green { background: #48bb78; }
+        .progress-fill.red { background: #f56565; }
+        .progress-fill.orange { background: #ed8936; }
+        .resource-val { font-size: 13px; font-weight: 600; color: #2d3748; min-width: 40px; text-align: right; }
 
-        .sidebar-item.active {
-            background: #edf2f7;
-            color: #2d3748;
-            border-left-color: #4299e1;
-            font-weight: 600;
-        }
+        /* BADGES */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-local { background: #ebf8ff; color: #2b6cb0; }
+        .badge-cluster { background: #f0fff4; color: #276749; }
+        .badge-small { background: #fefcbf; color: #975a16; }
+        .badge-medium { background: #fed7aa; color: #9c4221; }
+        .badge-large { background: #fed7d7; color: #9b2c2c; }
+        .badge-running { background: #c6f6d5; color: #276749; }
+        .badge-success { background: #c6f6d5; color: #22543d; }
+        .badge-failed { background: #fed7d7; color: #9b2c2c; }
+        .badge-submitted { background: #e9d8fd; color: #553c9a; }
 
-        .sidebar-icon {
-            width: 18px;
-            height: 18px;
-            opacity: 0.6;
-        }
+        /* EVENT LOG */
+        .event-list { max-height: 250px; overflow-y: auto; }
+        .event-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; display: flex; gap: 8px; align-items: flex-start; }
+        .event-item:last-child { border-bottom: none; }
+        .event-time { color: #a0aec0; min-width: 70px; font-family: monospace; }
+        .event-type { font-weight: 600; min-width: 100px; }
+        .event-detail { color: #4a5568; }
 
-        /* MAIN CONTENT */
-        .main {
-            flex: 1;
-            overflow: auto;
-        }
-
-        .header {
-            background: white;
-            padding: 24px 32px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a202c;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: #4299e1;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #3182ce;
-        }
-
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #2d3748;
-        }
-
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .content {
-            padding: 32px;
-        }
-
-        /* FILTERS */
-        .filter-bar {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .filter-label {
-            font-size: 13px;
-            color: #4a5568;
-            font-weight: 600;
-        }
-
-        .filter-select {
-            padding: 6px 12px;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
-            font-size: 13px;
-            background: white;
-            cursor: pointer;
-        }
-
-        /* METRICS GRID */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-
-        .metric-card {
-            background: white;
-            padding: 24px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            transition: all 0.2s;
-        }
-
-        .metric-card:hover {
-            border-color: #cbd5e0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .metric-label {
-            font-size: 13px;
-            color: #718096;
-            font-weight: 500;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        .metric-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 8px;
-        }
-
-        .metric-change {
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .metric-change.positive {
-            color: #22863a;
-        }
-
-        .metric-change.negative {
-            color: #cb2431;
-        }
-
-        /* CARDS SECTION */
-        .cards-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 32px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            padding: 24px;
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-title-label {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a202c;
-        }
-
-        /* TOPICS */
-        .topic-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .topic-item:last-child {
-            border-bottom: none;
-        }
-
-        .topic-name {
-            font-size: 14px;
-            color: #2d3748;
-            font-weight: 500;
-        }
-
-        .topic-progress {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .progress-bar {
-            width: 80px;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4299e1, #3182ce);
-        }
-
-        .progress-fill.good {
-            background: linear-gradient(90deg, #48bb78, #38a169);
-        }
-
-        .progress-text {
-            font-size: 13px;
-            font-weight: 600;
-            color: #4a5568;
-            min-width: 40px;
-            text-align: right;
-        }
-
-        /* LEADERBOARD */
-        .leaderboard-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .leaderboard-item:last-child {
-            border-bottom: none;
-        }
-
-        .rank-badge {
-            width: 32px;
-            height: 32px;
-            background: #edf2f7;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 700;
-            color: #2d3748;
-        }
-
-        .rank-badge.top {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .leaderboard-info {
-            flex: 1;
-        }
-
-        .leaderboard-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .leaderboard-score {
-            font-size: 12px;
-            color: #718096;
-        }
-
-        .leaderboard-value {
-            font-size: 14px;
-            font-weight: 700;
-            color: #2d3748;
-        }
+        /* JOB TABLE */
+        .job-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .job-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #718096; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .job-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+        .job-table tr:hover { background: #f7fafc; }
 
         /* CHART */
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
+        .chart-container { position: relative; height: 250px; }
 
-        @media (max-width: 1200px) {
-            .cards-section {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* SUBMIT FORM */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #4a5568; margin-bottom: 4px; display: block; }
+        .form-input { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 200px;
-            }
+        /* CLASSIFICATION RESULT */
+        .classification-result { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 12px; display: none; }
+        .classification-result.show { display: block; }
+        .class-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .class-label { font-size: 14px; font-weight: 700; }
+        .class-confidence { font-size: 12px; color: #718096; }
+        .class-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .class-detail-item { text-align: center; }
+        .class-detail-value { font-size: 16px; font-weight: 700; color: #2d3748; }
+        .class-detail-label { font-size: 11px; color: #a0aec0; }
 
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
+        .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+        .alert.success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+        .alert.error { background: #fff5f5; color: #9b2c2c; border: 1px solid #fed7d7; }
 
-            .header {
-                flex-direction: column;
-                gap: 16px;
-                align-items: flex-start;
-            }
-        }
+        @media (max-width: 1200px) { .cards-section { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .sidebar { width: 200px; } .metrics-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <div class="logo">⚡ OrcaFlow</div>
-
+            <div class="logo">OrcaFlow</div>
             <div class="sidebar-section">
-                <div class="sidebar-label">Main</div>
-                <div class="sidebar-item active">📊 Dashboard</div>
-                <div class="sidebar-item">📁 Jobs</div>
-                <div class="sidebar-item">⚙️ Resources</div>
+                <div class="sidebar-label">Pipeline</div>
+                <div class="sidebar-item active">Dashboard</div>
+                <div class="sidebar-item">Jobs</div>
+                <div class="sidebar-item">Submit Job</div>
             </div>
-
             <div class="sidebar-section">
-                <div class="sidebar-label">System</div>
-                <div class="sidebar-item">👥 Cluster</div>
-                <div class="sidebar-item">📈 Metrics</div>
-                <div class="sidebar-item">⚠️ Alerts</div>
+                <div class="sidebar-label">Infrastructure</div>
+                <div class="sidebar-item">Dataproc <div class="status-dot" id="dataproc-dot"></div></div>
+                <div class="sidebar-item">Kafka <div class="status-dot" id="kafka-dot"></div></div>
+                <div class="sidebar-item">YARN</div>
             </div>
-
             <div class="sidebar-section">
-                <div class="sidebar-label">Other</div>
-                <div class="sidebar-item">⚙️ Settings</div>
-                <div class="sidebar-item">❓ Help</div>
+                <div class="sidebar-label">ML</div>
+                <div class="sidebar-item">Classifier</div>
+                <div class="sidebar-item">Predictions</div>
             </div>
         </div>
 
-        <!-- MAIN CONTENT -->
+        <!-- MAIN -->
         <div class="main">
             <div class="header">
-                <div class="header-title">Dashboard</div>
-                <div class="header-actions">
-                    <select class="filter-select">
-                        <option>Last 7 days</option>
-                        <option>Last 30 days</option>
-                        <option>Last 90 days</option>
-                    </select>
-                    <button class="btn btn-secondary">📥 Download</button>
+                <div class="header-title">OrcaFlow Dashboard</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="connection-status" style="font-size:12px;color:#a0aec0;">Connecting...</span>
+                    <button class="btn btn-primary" onclick="updateDashboard()">Refresh</button>
                 </div>
             </div>
 
             <div class="content">
-                <!-- FILTER BAR -->
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <span class="filter-label">Timeframe:</span>
-                        <select class="filter-select">
-                            <option>All-time</option>
-                            <option>Last 7 days</option>
-                            <option>Last 30 days</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <span class="filter-label">Job Type:</span>
-                        <select class="filter-select">
-                            <option>All</option>
-                            <option>Batch Analytics</option>
-                            <option>Data Processing</option>
-                            <option>Training</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- METRICS GRID -->
+                <!-- METRICS -->
                 <div class="metrics-grid">
                     <div class="metric-card">
                         <div class="metric-label">Active Jobs</div>
                         <div class="metric-value" id="running-jobs">0</div>
-                        <div class="metric-change positive">↑ +2 from last day</div>
+                        <div class="metric-sub" id="running-sub">-</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">Jobs Completed</div>
-                        <div class="metric-value" id="total-jobs">0</div>
-                        <div class="metric-change positive">↑ +12 from last week</div>
+                        <div class="metric-label">Completed</div>
+                        <div class="metric-value" id="success-jobs">0</div>
+                        <div class="metric-sub" id="success-sub">-</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">Avg Job Duration</div>
-                        <div class="metric-value">24m 30s</div>
-                        <div class="metric-change negative">↓ -2m from avg</div>
+                        <div class="metric-label">Failed</div>
+                        <div class="metric-value" id="failed-jobs">0</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">Resource Utilization</div>
+                        <div class="metric-label">Local Jobs</div>
+                        <div class="metric-value" id="local-jobs">0</div>
+                        <div class="metric-sub">small_quick</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Cluster Jobs</div>
+                        <div class="metric-value" id="cluster-jobs">0</div>
+                        <div class="metric-sub">Dataproc YARN</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">CPU Usage</div>
                         <div class="metric-value" id="cpu-usage">0%</div>
-                        <div class="metric-change positive">↑ Healthy</div>
                     </div>
                 </div>
 
-                <!-- TWO COLUMN SECTION -->
+                <!-- ROW 1: Resources + Job Queue -->
                 <div class="cards-section">
-                    <!-- RESOURCE USAGE -->
                     <div class="card">
-                        <div class="card-title">
-                            <span class="card-title-label">Resource Usage</span>
-                        </div>
-                        <div class="topic-item">
-                            <div class="topic-name">CPU Usage</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="cpu-bar" style="width: 0%"></div>
-                                </div>
-                                <div class="progress-text" id="cpu-usage-text">0%</div>
+                        <div class="card-title">System Resources</div>
+                        <div class="resource-row">
+                            <span class="resource-name">CPU</span>
+                            <div class="resource-right">
+                                <div class="progress-bar"><div class="progress-fill blue" id="cpu-bar" style="width:0%"></div></div>
+                                <span class="resource-val" id="cpu-val">0%</span>
                             </div>
                         </div>
-                        <div class="topic-item">
-                            <div class="topic-name">Memory Usage</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="memory-bar" style="width: 0%"></div>
-                                </div>
-                                <div class="progress-text" id="memory-usage-text">0%</div>
+                        <div class="resource-row">
+                            <span class="resource-name">Memory</span>
+                            <div class="resource-right">
+                                <div class="progress-bar"><div class="progress-fill green" id="mem-bar" style="width:0%"></div></div>
+                                <span class="resource-val" id="mem-val">0%</span>
                             </div>
                         </div>
-                        <div class="topic-item">
-                            <div class="topic-name">Disk Usage</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 68%"></div>
-                                </div>
-                                <div class="progress-text">68%</div>
+                        <div class="resource-row">
+                            <span class="resource-name">Disk</span>
+                            <div class="resource-right">
+                                <div class="progress-bar"><div class="progress-fill orange" id="disk-bar" style="width:0%"></div></div>
+                                <span class="resource-val" id="disk-val">0%</span>
+                            </div>
+                        </div>
+                        <div class="resource-row">
+                            <span class="resource-name">Dataproc</span>
+                            <div class="resource-right">
+                                <span class="badge" id="dataproc-badge">checking...</span>
+                            </div>
+                        </div>
+                        <div class="resource-row">
+                            <span class="resource-name">Kafka</span>
+                            <div class="resource-right">
+                                <span class="badge" id="kafka-badge">checking...</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- JOB STATUS -->
                     <div class="card">
-                        <div class="card-title">
-                            <span class="card-title-label">Job Queue Status</span>
-                        </div>
-                        <div class="topic-item">
-                            <div class="topic-name">Running</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill good" style="width: 65%"></div>
-                                </div>
-                                <div class="progress-text" id="queued-jobs">0</div>
-                            </div>
-                        </div>
-                        <div class="topic-item">
-                            <div class="topic-name">Queued</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 35%"></div>
-                                </div>
-                                <div class="progress-text">12</div>
-                            </div>
-                        </div>
-                        <div class="topic-item">
-                            <div class="topic-name">Failed</div>
-                            <div class="topic-progress">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 5%; background: #f56565;"></div>
-                                </div>
-                                <div class="progress-text">2</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECOND ROW -->
-                <div class="cards-section">
-                    <!-- TOP JOBS -->
-                    <div class="card">
-                        <div class="card-title">
-                            <span class="card-title-label">Top Running Jobs</span>
-                        </div>
-                        <div class="leaderboard-item">
-                            <div class="rank-badge top">1 ▲</div>
-                            <div class="leaderboard-info">
-                                <div class="leaderboard-name">Batch Analytics</div>
-                                <div class="leaderboard-score">4.5GB | 2h runtime</div>
-                            </div>
-                            <div class="leaderboard-value">95%</div>
-                        </div>
-                        <div class="leaderboard-item">
-                            <div class="rank-badge top" style="background: #dbeafe; color: #1e40af;">2</div>
-                            <div class="leaderboard-info">
-                                <div class="leaderboard-name">Data Processing</div>
-                                <div class="leaderboard-score">2.1GB | 45m runtime</div>
-                            </div>
-                            <div class="leaderboard-value">78%</div>
-                        </div>
-                        <div class="leaderboard-item">
-                            <div class="rank-badge">3</div>
-                            <div class="leaderboard-info">
-                                <div class="leaderboard-name">Model Training</div>
-                                <div class="leaderboard-score">8.2GB | 3h runtime</div>
-                            </div>
-                            <div class="leaderboard-value">42%</div>
-                        </div>
-                    </div>
-
-                    <!-- ACTIVITY CHART -->
-                    <div class="card">
-                        <div class="card-title">
-                            <span class="card-title-label">Activity</span>
-                        </div>
+                        <div class="card-title">Activity</div>
                         <div class="chart-container">
                             <canvas id="resourceChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- SUBMIT FORM -->
-                <div class="card" style="margin-top: 32px;">
-                    <div class="card-title">
-                        <span class="card-title-label">Submit New Job</span>
+                <!-- ROW 2: Job Table + Event Stream -->
+                <div class="cards-section">
+                    <div class="card">
+                        <div class="card-title">Recent Jobs</div>
+                        <table class="job-table">
+                            <thead>
+                                <tr>
+                                    <th>Job ID</th>
+                                    <th>Status</th>
+                                    <th>Target</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="job-table-body">
+                                <tr><td colspan="4" style="color:#a0aec0;text-align:center;">No jobs yet</td></tr>
+                            </tbody>
+                        </table>
                     </div>
+
+                    <div class="card">
+                        <div class="card-title">Kafka Event Stream <span id="event-count" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></div>
+                        <div class="event-list" id="event-list">
+                            <div style="color:#a0aec0;text-align:center;padding:20px;font-size:13px;">
+                                Events will appear here when Kafka is connected and jobs are submitted
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBMIT JOB -->
+                <div class="card">
+                    <div class="card-title">Submit New Job</div>
                     <div id="message"></div>
-                    <form id="job-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">Job Type</label>
-                            <select id="job-type" class="filter-select" required>
-                                <option value="batch_analytics">Batch Analytics</option>
-                                <option value="data_processing">Data Processing</option>
-                                <option value="training">Training</option>
-                            </select>
+                    <form id="job-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Job Type</label>
+                                <select id="job-type" class="form-input">
+                                    <option value="batch_analytics">Batch Analytics</option>
+                                    <option value="data_processing">Data Processing</option>
+                                    <option value="training">ML Training</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Dataset Size (MB)</label>
+                                <input type="number" id="dataset-size" class="form-input" value="2500">
+                            </div>
+                            <div class="form-group">
+                                <label>Complexity (1-10)</label>
+                                <input type="number" id="code-complexity" class="form-input" min="1" max="10" value="6">
+                            </div>
+                            <div class="form-group">
+                                <label>Memory (MB)</label>
+                                <input type="number" id="memory-req" class="form-input" value="2048">
+                            </div>
+                            <div class="form-group">
+                                <label>CPU Cores</label>
+                                <input type="number" id="cpu-req" class="form-input" value="4">
+                            </div>
+                            <div class="form-group">
+                                <label>Priority (1-10)</label>
+                                <input type="number" id="priority" class="form-input" min="1" max="10" value="5">
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">Dataset Size (MB)</label>
-                            <input type="number" id="dataset-size" class="filter-select" value="2500" required>
+                        <div style="margin-top:12px;display:flex;gap:10px;">
+                            <button type="button" class="btn" style="background:#edf2f7;color:#2d3748;" onclick="previewClassification()">Preview Classification</button>
+                            <button type="submit" class="btn btn-primary">Submit Job</button>
                         </div>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">Code Complexity (1-10)</label>
-                            <input type="number" id="code-complexity" class="filter-select" min="1" max="10" value="6" required>
-                        </div>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">Memory (MB)</label>
-                            <input type="number" id="memory-req" class="filter-select" value="2048" required>
-                        </div>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">CPU Cores</label>
-                            <input type="number" id="cpu-req" class="filter-select" value="4" required>
-                        </div>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; display: block;">Priority (1-10)</label>
-                            <input type="number" id="priority" class="filter-select" min="1" max="10" value="5" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="margin-top: auto; width: 100%;">→ Submit Job</button>
                     </form>
+                    <div class="classification-result" id="classification-result">
+                        <div class="class-header">
+                            <span class="class-label">ML Classification: <span id="class-name">-</span></span>
+                            <span class="class-confidence" id="class-confidence">-</span>
+                        </div>
+                        <div class="class-details">
+                            <div class="class-detail-item">
+                                <div class="class-detail-value" id="class-target">-</div>
+                                <div class="class-detail-label">Execution Target</div>
+                            </div>
+                            <div class="class-detail-item">
+                                <div class="class-detail-value" id="class-duration">-</div>
+                                <div class="class-detail-label">Est. Duration</div>
+                            </div>
+                            <div class="class-detail-item">
+                                <div class="class-detail-value" id="class-workers">-</div>
+                                <div class="class-detail-label">Workers</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>    <script>
+    </div>
+
+    <script>
         const API_BASE = 'http://localhost:8000';
         let chart = null;
-        let resourceHistory = {
-            labels: [],
-            cpu: [],
-            memory: []
-        };
-        let lastUpdateTime = 0;
-        const UPDATE_INTERVAL = 5000; // 5 seconds
+        let resourceHistory = { labels: [], cpu: [], memory: [] };
 
-        // Initialize chart
         function initChart() {
             const ctx = document.getElementById('resourceChart');
             if (!ctx) return;
-
             if (chart) {
-                // Update existing chart instead of destroying and recreating
                 chart.data.labels = resourceHistory.labels;
                 chart.data.datasets[0].data = resourceHistory.cpu;
                 chart.data.datasets[1].data = resourceHistory.memory;
-                chart.update('none'); // Update without animation
+                chart.update('none');
                 return;
             }
-
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: resourceHistory.labels,
                     datasets: [
-                        {
-                            label: 'CPU Usage %',
-                            data: resourceHistory.cpu,
-                            borderColor: '#4299e1',
-                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#4299e1'
-                        },
-                        {
-                            label: 'Memory Usage %',
-                            data: resourceHistory.memory,
-                            borderColor: '#48bb78',
-                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#48bb78'
-                        }
+                        { label: 'CPU %', data: resourceHistory.cpu, borderColor: '#4299e1', backgroundColor: 'rgba(66,153,225,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 2 },
+                        { label: 'Memory %', data: resourceHistory.memory, borderColor: '#48bb78', backgroundColor: 'rgba(72,187,120,0.1)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 2 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 0 // No animation for smooth updates
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                font: {
-                                    size: 12,
-                                    weight: 600
-                                }
-                            }
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } },
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11, weight: 600 } } } }
                 }
             });
         }
 
-        // Check service status
-        async function checkStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/health`, { timeout: 2000 });
-                // Status check logic
-            } catch (e) {
-                // Offline - continue anyway
-            }
+        function statusBadge(status) {
+            const cls = { running: 'badge-running', success: 'badge-success', failed: 'badge-failed', submitted: 'badge-submitted' }[status] || 'badge-submitted';
+            return `<span class="badge ${cls}">${status}</span>`;
         }
 
-        // Fetch cluster status
+        function targetBadge(target) {
+            if (target === 'dataproc_yarn') return '<span class="badge badge-cluster">YARN</span>';
+            return '<span class="badge badge-local">Local</span>';
+        }
+
         async function updateDashboard() {
             try {
-                const response = await fetch(`${API_BASE}/api/cluster/status`);
-                const data = await response.json();
+                const res = await fetch(`${API_BASE}/api/cluster/status`);
+                const d = await res.json();
 
-                document.getElementById('cpu-usage').textContent = `${Math.round(data.cpu_usage || 0)}%`;
-                document.getElementById('cpu-usage-text').textContent = `${Math.round(data.cpu_usage || 0)}%`;
-                document.getElementById('memory-usage-text').textContent = `${Math.round(data.memory_usage || 0)}%`;
-                document.getElementById('cpu-bar').style.width = `${data.cpu_usage || 0}%`;
-                document.getElementById('memory-bar').style.width = `${data.memory_usage || 0}%`;
+                document.getElementById('connection-status').textContent = 'Connected';
+                document.getElementById('connection-status').style.color = '#48bb78';
 
-                document.getElementById('total-jobs').textContent = data.total_jobs || 0;
-                document.getElementById('running-jobs').textContent = data.running_jobs || 0;
-                document.getElementById('queued-jobs').textContent = data.queued_jobs || 0;
+                document.getElementById('running-jobs').textContent = d.running_jobs || 0;
+                document.getElementById('success-jobs').textContent = d.success_jobs || 0;
+                document.getElementById('failed-jobs').textContent = d.failed_jobs || 0;
+                document.getElementById('local-jobs').textContent = d.local_jobs || 0;
+                document.getElementById('cluster-jobs').textContent = d.cluster_jobs || 0;
+                document.getElementById('cpu-usage').textContent = Math.round(d.cpu_usage || 0) + '%';
 
-                // Update chart only if data has changed
-                const now = new Date().toLocaleTimeString();
-                const cpuVal = Math.round(data.cpu_usage || 0);
-                const memVal = Math.round(data.memory_usage || 0);
-                
-                // Only add to history if different from last entry
-                if (resourceHistory.cpu.length === 0 || 
-                    resourceHistory.cpu[resourceHistory.cpu.length - 1] !== cpuVal ||
-                    resourceHistory.memory[resourceHistory.memory.length - 1] !== memVal) {
-                    
-                    resourceHistory.labels.push(now);
-                    resourceHistory.cpu.push(cpuVal);
-                    resourceHistory.memory.push(memVal);
+                document.getElementById('cpu-bar').style.width = (d.cpu_usage || 0) + '%';
+                document.getElementById('cpu-val').textContent = Math.round(d.cpu_usage || 0) + '%';
+                document.getElementById('mem-bar').style.width = (d.memory_usage || 0) + '%';
+                document.getElementById('mem-val').textContent = Math.round(d.memory_usage || 0) + '%';
+                document.getElementById('disk-bar').style.width = (d.disk_usage || 0) + '%';
+                document.getElementById('disk-val').textContent = Math.round(d.disk_usage || 0) + '%';
 
-                    // Keep only last 24 entries
-                    if (resourceHistory.labels.length > 24) {
-                        resourceHistory.labels.shift();
-                        resourceHistory.cpu.shift();
-                        resourceHistory.memory.shift();
-                    }
+                // Dataproc/Kafka status
+                const dpBadge = document.getElementById('dataproc-badge');
+                const kBadge = document.getElementById('kafka-badge');
+                const dpDot = document.getElementById('dataproc-dot');
+                const kDot = document.getElementById('kafka-dot');
 
-                    initChart();
+                if (d.dataproc_connected) { dpBadge.className = 'badge badge-cluster'; dpBadge.textContent = 'Connected'; dpDot.className = 'status-dot green'; }
+                else { dpBadge.className = 'badge badge-failed'; dpBadge.textContent = 'Offline'; dpDot.className = 'status-dot red'; }
+                if (d.kafka_connected) { kBadge.className = 'badge badge-cluster'; kBadge.textContent = 'Connected'; kDot.className = 'status-dot green'; }
+                else { kBadge.className = 'badge badge-small'; kBadge.textContent = 'Offline'; kDot.className = 'status-dot yellow'; }
+
+                // Job table
+                const tbody = document.getElementById('job-table-body');
+                if (d.jobs && d.jobs.length > 0) {
+                    tbody.innerHTML = d.jobs.map(j => `<tr>
+                        <td style="font-family:monospace;font-size:12px;">${(j.job_id||'').substring(0,20)}</td>
+                        <td>${statusBadge(j.status)}</td>
+                        <td>${targetBadge(j.execution_target)}</td>
+                        <td>${j.job_type || '-'}</td>
+                    </tr>`).join('');
                 }
+
+                // Chart
+                const now = new Date().toLocaleTimeString();
+                resourceHistory.labels.push(now);
+                resourceHistory.cpu.push(Math.round(d.cpu_usage || 0));
+                resourceHistory.memory.push(Math.round(d.memory_usage || 0));
+                if (resourceHistory.labels.length > 30) { resourceHistory.labels.shift(); resourceHistory.cpu.shift(); resourceHistory.memory.shift(); }
+                initChart();
+
             } catch (e) {
-                console.error('Failed to fetch cluster status:', e);
+                document.getElementById('connection-status').textContent = 'Disconnected';
+                document.getElementById('connection-status').style.color = '#f56565';
             }
         }
 
-        // Submit job form
-        document.getElementById('job-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        async function updateEvents() {
+            try {
+                const res = await fetch(`${API_BASE}/api/events?limit=20`);
+                const d = await res.json();
+                const el = document.getElementById('event-list');
+                const countEl = document.getElementById('event-count');
+                if (d.events && d.events.length > 0) {
+                    countEl.textContent = `(${d.events.length} events)`;
+                    el.innerHTML = d.events.map(e => `<div class="event-item">
+                        <span class="event-time">${(e.timestamp||'').substring(11,19)}</span>
+                        <span class="event-type">${e.event_type}</span>
+                        <span class="event-detail">${e.job_id} ${JSON.stringify(e.data||{}).substring(0,60)}</span>
+                    </div>`).join('');
+                }
+            } catch(e) {}
+        }
 
-            const messageEl = document.getElementById('message');
+        async function previewClassification() {
+            const data = getFormData();
+            try {
+                const res = await fetch(`${API_BASE}/api/classify`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+                const r = await res.json();
+                const el = document.getElementById('classification-result');
+                el.classList.add('show');
+                document.getElementById('class-name').textContent = r.classification.job_class;
+                document.getElementById('class-confidence').textContent = `${(r.classification.confidence * 100).toFixed(0)}% confidence`;
+                document.getElementById('class-target').textContent = r.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local';
+                document.getElementById('class-duration').textContent = r.resource_estimate.estimated_duration_sec + 's';
+                document.getElementById('class-workers').textContent = r.resource_estimate.recommended_workers;
+            } catch(e) {
+                document.getElementById('message').innerHTML = `<div class="alert error">Could not classify: ${e.message}</div>`;
+            }
+        }
 
-            const jobData = {
+        function getFormData() {
+            return {
                 job_type: document.getElementById('job-type').value,
                 dataset_size_mb: parseInt(document.getElementById('dataset-size').value),
-                code_path: '/jobs/sample_pyspark.py',
                 code_complexity_score: parseInt(document.getElementById('code-complexity').value),
                 memory_requirement_mb: parseInt(document.getElementById('memory-req').value),
                 cpu_requirement_cores: parseInt(document.getElementById('cpu-req').value),
                 priority: parseInt(document.getElementById('priority').value),
-                estimated_duration_min: 30
             };
+        }
 
+        document.getElementById('job-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('message');
             try {
-                const response = await fetch(`${API_BASE}/api/jobs/submit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(jobData)
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    messageEl.innerHTML = `<div class="alert success">✓ Job submitted! ID: ${result.job_id}</div>`;
-                    document.getElementById('job-form').reset();
-                    setTimeout(() => updateDashboard(), 500);
+                const res = await fetch(`${API_BASE}/api/jobs/submit`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
+                const r = await res.json();
+                if (res.ok) {
+                    const target = r.execution_target === 'dataproc_yarn' ? 'Dataproc YARN cluster' : 'locally';
+                    const cls = r.classification ? r.classification.job_class : 'unknown';
+                    msg.innerHTML = `<div class="alert success">Job <b>${r.job_id}</b> classified as <b>${cls}</b> and submitted to <b>${target}</b></div>`;
+                    setTimeout(() => { updateDashboard(); updateEvents(); }, 500);
                 } else {
-                    messageEl.innerHTML = `<div class="alert error">✗ Error: ${result.detail || 'Unknown error'}</div>`;
+                    msg.innerHTML = `<div class="alert error">${r.detail || 'Submission failed'}</div>`;
                 }
-            } catch (e) {
-                messageEl.innerHTML = `<div class="alert error">✗ Failed to submit job: ${e.message}</div>`;
+            } catch(e) {
+                msg.innerHTML = `<div class="alert error">Failed: ${e.message}</div>`;
             }
         });
 
-        // Initialize
-        checkStatus();
         updateDashboard();
-        setInterval(checkStatus, 10000); // Every 10 seconds
-        setInterval(updateDashboard, UPDATE_INTERVAL); // Every 5 seconds
+        updateEvents();
         initChart();
+        setInterval(updateDashboard, 5000);
+        setInterval(updateEvents, 5000);
     </script>
 </body>
 </html>
