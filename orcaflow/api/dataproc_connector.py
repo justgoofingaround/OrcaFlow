@@ -27,6 +27,8 @@ HDFS_ORCAFLOW_DIR = f"{HDFS_USER_DIR}/orcaflow"
 class DataprocConnector:
     """Manages connection and job submission to NYU Dataproc cluster."""
 
+    HDFS_ORCAFLOW_DIR = HDFS_ORCAFLOW_DIR
+
     def __init__(self):
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self._check_gcloud()
@@ -86,8 +88,76 @@ class DataprocConnector:
             "--project", DATAPROC_PROJECT,
             "--zone", DATAPROC_ZONE
         ]
-        result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=1800)
         return result.returncode == 0
+
+    def _scp_download(self, remote_path: str, local_path: str) -> bool:
+        """
+        Download a file or directory from Dataproc master via SCP.
+
+        Args:
+            remote_path: Remote source path
+            local_path: Local destination path
+
+        Returns:
+            True if download succeeded
+        """
+        scp_cmd = [
+            "gcloud", "compute", "scp", "--recurse",
+            f"{DATAPROC_INSTANCE}:{remote_path}",
+            local_path,
+            "--project", DATAPROC_PROJECT,
+            "--zone", DATAPROC_ZONE
+        ]
+        result = subprocess.run(scp_cmd, capture_output=True, text=True, timeout=300)
+        return result.returncode == 0
+
+    def upload_data_file(self, job_id: str, local_file_path: str) -> str:
+        """
+        Ensure a single data file is in HDFS, uploading only if needed.
+
+        Uses a shared /orcaflow/data/ directory so the same file is never
+        re-uploaded across multiple job runs.
+
+        Args:
+            job_id: Job identifier (used for temp dir naming)
+            local_file_path: Absolute path to the local data file
+
+        Returns:
+            HDFS path to the directory containing the file
+        """
+        hdfs_data_dir = f"{HDFS_ORCAFLOW_DIR}/data"
+        filename = os.path.basename(local_file_path)
+
+        # Check if file already exists in HDFS
+        self._ssh_command(f"hadoop fs -mkdir -p {hdfs_data_dir}", timeout=30)
+        check = self._ssh_command(
+            f"hadoop fs -test -f {hdfs_data_dir}/{filename} && echo EXISTS",
+            timeout=30
+        )
+
+        if "EXISTS" in (check.stdout or ""):
+            logger.info(f"File {filename} already in HDFS, skipping upload")
+            return hdfs_data_dir
+
+        # SCP file to Dataproc, then put into HDFS
+        logger.info(f"Uploading {filename} to Dataproc HDFS...")
+        remote_tmp = f"/tmp/orcaflow_data_{job_id}"
+        self._ssh_command(f"mkdir -p {remote_tmp}", timeout=15)
+
+        if not self._scp_upload(local_file_path, f"{remote_tmp}/{filename}"):
+            raise RuntimeError(f"Failed to SCP {filename} to Dataproc")
+
+        result = self._ssh_command(
+            f"hadoop fs -put -f {remote_tmp}/{filename} {hdfs_data_dir}/",
+            timeout=600
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to put {filename} into HDFS: {result.stderr}")
+
+        self._ssh_command(f"rm -rf {remote_tmp}", timeout=15)
+        logger.info(f"File uploaded to HDFS: {hdfs_data_dir}/{filename}")
+        return hdfs_data_dir
 
     def test_connection(self) -> Dict[str, Any]:
         """Test SSH connectivity to Dataproc cluster."""
@@ -220,9 +290,10 @@ class DataprocConnector:
         finally:
             self.jobs[job_id]["completed_at"] = datetime.now().isoformat()
 
-            # Cleanup remote script
+            # Cleanup remote script and temp data
             try:
                 self._ssh_command(f"rm -f {remote_script}", timeout=15)
+                self._ssh_command(f"rm -rf /tmp/orcaflow_data_{job_id}", timeout=15)
             except Exception:
                 pass
 
@@ -238,13 +309,48 @@ class DataprocConnector:
         return None
 
     def list_hdfs_files(self, path: str = None) -> Dict[str, Any]:
-        """List files in HDFS."""
+        """List files in HDFS recursively, returning a parsed list."""
         hdfs_path = path or HDFS_ORCAFLOW_DIR
         try:
-            result = self._ssh_command(f"hadoop fs -ls {hdfs_path}", timeout=30)
-            return {"path": hdfs_path, "output": result.stdout, "error": result.stderr if result.returncode != 0 else None}
+            result = self._ssh_command(f"hadoop fs -ls -R {hdfs_path}", timeout=30)
+            if result.returncode != 0:
+                return {"path": hdfs_path, "files": [], "error": result.stderr}
+
+            # Skip Spark internal files
+            skip_names = {"_SUCCESS", "_committed_", "_started_"}
+
+            files = []
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if not line or line.startswith("Found"):
+                    continue
+                parts = line.split()
+                if len(parts) >= 8:
+                    perms = parts[0]
+                    size = int(parts[4]) if parts[4].isdigit() else 0
+                    filepath = parts[-1]
+                    filename = filepath.split("/")[-1]
+                    is_dir = perms.startswith("d")
+
+                    # Skip directories, Spark internal files, and part files
+                    if is_dir:
+                        continue
+                    if (filename.startswith("part-")
+                            or filename.startswith(".")
+                            or any(s in filename for s in skip_names)):
+                        continue
+
+                    display = filepath.replace(HDFS_ORCAFLOW_DIR, "")
+                    if not display:
+                        display = "/"
+                    size_mb = round(size / (1024 * 1024), 2) if size > 0 else 0
+                    entry = display
+                    if size_mb > 0:
+                        entry += f"  ({size_mb} MB)"
+                    files.append(entry)
+            return {"path": hdfs_path, "files": files, "error": None}
         except Exception as e:
-            return {"path": hdfs_path, "error": str(e)}
+            return {"path": hdfs_path, "files": [], "error": str(e)}
 
     def get_yarn_status(self) -> Dict[str, Any]:
         """Get YARN cluster status."""

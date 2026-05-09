@@ -2,7 +2,7 @@
 OrcaFlow FastAPI Server
 
 Provides REST API for job submission, monitoring, and cluster status.
-Integrates ML classifier, job router, Kafka events, and Dataproc connector.
+Integrates ML classifier, job router, and Dataproc connector.
 
 Usage:
     python start_server.py
@@ -14,12 +14,13 @@ Environment variables:
 
 import os
 import logging
+import tempfile
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import psutil
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging
@@ -32,7 +33,6 @@ logger = logging.getLogger(__name__)
 # Import OrcaFlow components
 from spark_executor import executor as local_executor
 from job_router import router as job_router
-from kafka_events import event_producer, event_consumer
 from dataproc_connector import dataproc
 
 # Initialize FastAPI
@@ -60,8 +60,7 @@ job_counter = 0
 @app.on_event("startup")
 async def startup_event():
     """Start background services on server startup."""
-    event_consumer.start()
-    logger.info("OrcaFlow API v2.0 started — ML classifier, Kafka, Dataproc integration active")
+    logger.info("OrcaFlow API v2.0 started — ML classifier, Dataproc integration active")
 
 
 # ============================================================
@@ -77,7 +76,6 @@ async def health_check() -> Dict[str, Any]:
         "version": "2.0.0",
         "components": {
             "ml_classifier": job_router.classifier.model is not None or "rule_based_fallback",
-            "kafka": event_producer.enabled,
             "dataproc": dataproc.gcloud_available,
         }
     }
@@ -118,8 +116,41 @@ async def cluster_status() -> Dict[str, Any]:
         "local_jobs": local_jobs,
         "cluster_jobs": cluster_jobs,
         "dataproc_connected": dataproc.gcloud_available,
-        "kafka_connected": event_producer.enabled,
         "jobs": all_jobs[:10],
+    }
+
+
+# ============================================================
+# Path Validation Endpoint
+# ============================================================
+
+ALLOWED_EXTENSIONS = {".csv", ".tsv", ".parquet"}
+
+
+@app.post("/api/validate-path", tags=["Jobs"])
+async def validate_path(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate that a file path exists and is a supported format."""
+    path = request_data.get("path", "").strip()
+
+    if not path:
+        raise HTTPException(status_code=400, detail="No path provided")
+
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=400, detail=f"File not found: {path}")
+
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Must be CSV, TSV, or Parquet.")
+
+    size_bytes = os.path.getsize(path)
+    size_mb = round(size_bytes / (1024 * 1024), 2)
+
+    return {
+        "valid": True,
+        "path": path,
+        "filename": os.path.basename(path),
+        "size_bytes": size_bytes,
+        "size_mb": size_mb,
     }
 
 
@@ -127,57 +158,115 @@ async def cluster_status() -> Dict[str, Any]:
 # Job Management Endpoints
 # ============================================================
 
+# Analytics type → code complexity mapping
+ANALYTICS_COMPLEXITY = {
+    "profiling": 2,
+    "aggregation": 5,
+    "etl": 5,
+    "ml": 8,
+}
+
+
 @app.post("/api/jobs/submit", tags=["Jobs"])
 async def submit_job(request_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Submit a job with ML-based classification and intelligent routing.
-
-    The ML classifier analyzes job parameters and routes to:
-    - Local execution (small_quick jobs)
-    - NYU Dataproc YARN cluster (medium_cpu / large_intensive jobs)
+    Provide file_path (path to data on disk) + analytics_type.
     """
     global job_counter
+
+    file_path = request_data.get("file_path", "").strip()
+    analytics_type = request_data.get("analytics_type")
+
+    if not file_path or not analytics_type:
+        raise HTTPException(status_code=400, detail="file_path and analytics_type are required")
+
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail=f"File not found: {file_path}")
+
+    if analytics_type not in ANALYTICS_COMPLEXITY:
+        raise HTTPException(status_code=400, detail=f"Invalid analytics_type: {analytics_type}. Must be one of: {list(ANALYTICS_COMPLEXITY.keys())}")
 
     job_id = f"job-{datetime.now().strftime('%Y%m%d%H%M%S')}-{job_counter:04d}"
     job_counter += 1
 
-    # Prepare job data
+    size_bytes = os.path.getsize(file_path)
+    total_mb = round(size_bytes / (1024 * 1024), 2)
+    complexity = ANALYTICS_COMPLEXITY[analytics_type]
+
     job_data = {
-        "job_type": request_data.get("job_type", "batch_analytics"),
-        "dataset_size_mb": request_data.get("dataset_size_mb", 100),
-        "code_complexity_score": request_data.get("code_complexity_score", 5),
-        "memory_requirement_mb": request_data.get("memory_requirement_mb", 1024),
-        "cpu_requirement_cores": request_data.get("cpu_requirement_cores", 2),
-        "priority": request_data.get("priority", 5),
-        "estimated_duration_min": request_data.get("estimated_duration_min", 30),
-        "input_path": request_data.get("input_path"),
-        "output_path": request_data.get("output_path"),
-        "script_path": request_data.get("script_path"),
+        "job_type": analytics_type,
+        "analytics_type": analytics_type,
+        "input_path": file_path,
+        "dataset_size_mb": total_mb,
+        "total_file_size_mb": total_mb,
+        "code_complexity_score": complexity,
+        "memory_requirement_mb": min(int(total_mb * 3), 8192),
+        "cpu_requirement_cores": 4 if analytics_type == "ml" else 2,
+        "priority": 5,
     }
 
     try:
-        # Emit Kafka event: submitted
-        event_producer.emit_job_submitted(job_id, job_data)
-
         # Classify and route
         result = job_router.route_and_submit(job_id, job_data)
-
-        # Emit Kafka events: classified and routed
-        if "classification" in result:
-            event_producer.emit_job_classified(job_id, result["classification"])
-        event_producer.emit_job_routed(
-            job_id, result.get("execution_target", "local"),
-            result.get("classification", {}).get("job_class", "unknown")
-        )
 
         logger.info(f"Job {job_id} submitted -> {result.get('execution_target')} ({result.get('classification', {}).get('job_class')})")
 
         return result
 
     except Exception as e:
-        event_producer.emit_job_failed(job_id, str(e))
         logger.error(f"Job submission failed: {e}")
         raise HTTPException(status_code=500, detail=f"Job submission failed: {str(e)}")
+
+
+@app.post("/api/jobs/submit-script", tags=["Jobs"])
+async def submit_script(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Submit a custom PySpark script to run on Dataproc against an HDFS data file."""
+    global job_counter
+
+    hdfs_path = request_data.get("hdfs_path", "").strip()
+    script_content = request_data.get("script_content", "").strip()
+
+    if not hdfs_path:
+        raise HTTPException(status_code=400, detail="hdfs_path is required")
+    if not script_content:
+        raise HTTPException(status_code=400, detail="script_content is required")
+    if not dataproc.gcloud_available:
+        raise HTTPException(status_code=503, detail="Dataproc is not available")
+
+    job_id = f"job-{datetime.now().strftime('%Y%m%d%H%M%S')}-{job_counter:04d}"
+    job_counter += 1
+
+    # Save script to temp file
+    script_file = os.path.join(tempfile.gettempdir(), f"orcaflow_{job_id}.py")
+    with open(script_file, "w") as f:
+        f.write(script_content)
+
+    try:
+        result = dataproc.submit_spark_job(
+            job_id=job_id,
+            script_path=script_file,
+            args=[hdfs_path],
+        )
+
+        logger.info(f"Custom script job {job_id} submitted to Dataproc, data: {hdfs_path}")
+
+        return {
+            "job_id": job_id,
+            "status": result["status"],
+            "execution_target": "dataproc_yarn",
+            "hdfs_path": hdfs_path,
+            "message": "Custom script submitted to Dataproc YARN",
+        }
+
+    except Exception as e:
+        logger.error(f"Script submission failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            os.remove(script_file)
+        except OSError:
+            pass
 
 
 @app.get("/api/jobs/{job_id}", tags=["Jobs"])
@@ -203,7 +292,6 @@ async def cancel_job(job_id: str) -> Dict[str, Any]:
     """Cancel a running job."""
     result = local_executor.cancel_job(job_id)
     if result:
-        event_producer.emit("job_cancelled", job_id)
         return {"job_id": job_id, "status": "cancelled", "message": "Job cancelled"}
     raise HTTPException(status_code=400, detail="Could not cancel job")
 
@@ -238,7 +326,7 @@ async def classify_job(request_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================================================
-# Dataproc & Kafka Endpoints
+# Dataproc Endpoints
 # ============================================================
 
 @app.get("/api/dataproc/status", tags=["Dataproc"])
@@ -261,13 +349,6 @@ async def hdfs_listing(path: Optional[str] = None) -> Dict[str, Any]:
 async def yarn_status() -> Dict[str, Any]:
     """Get YARN application status from Dataproc."""
     return dataproc.get_yarn_status()
-
-
-@app.get("/api/events", tags=["Kafka"])
-async def get_events(limit: int = 50) -> Dict[str, Any]:
-    """Get recent Kafka events for the dashboard."""
-    events = event_consumer.get_recent_events(limit=limit)
-    return {"events": events, "total": len(events), "kafka_enabled": event_consumer.enabled}
 
 
 # ============================================================
@@ -297,7 +378,6 @@ async def serve_dashboard():
             "list_jobs": "GET /api/jobs",
             "cluster_status": "GET /api/cluster/status",
             "dataproc_status": "GET /api/dataproc/status",
-            "kafka_events": "GET /api/events",
         }
     }
 
@@ -314,7 +394,6 @@ if __name__ == "__main__":
     logger.info(f"Dashboard: http://localhost:{port}")
     logger.info(f"API Docs:  http://localhost:{port}/docs")
     logger.info(f"Dataproc:  {'connected' if dataproc.gcloud_available else 'not available'}")
-    logger.info(f"Kafka:     {'connected' if event_producer.enabled else 'not available'}")
     logger.info("=" * 60)
 
     uvicorn.run(app, host=host, port=port, log_level="info")

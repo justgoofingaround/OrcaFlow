@@ -10,6 +10,7 @@ Routes jobs to the appropriate execution target based on ML classification:
 import os
 import sys
 import logging
+import threading
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -29,22 +30,41 @@ class JobRouter:
         self.classifier = JobClassifier()
         logger.info("JobRouter initialized with ML classifier")
 
+    # Analytics type → complexity mapping
+    ANALYTICS_COMPLEXITY = {
+        "profiling": 2,
+        "aggregation": 5,
+        "etl": 5,
+        "ml": 8,
+    }
+
     def classify_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Classify a job using the ML model.
 
-        Args:
-            job_data: Job submission data with resource requirements
-
-        Returns:
-            Classification result with job_class, confidence, etc.
+        For file-upload jobs, features are auto-derived from actual file size
+        and analytics type. For legacy jobs, uses the provided values.
         """
-        features = {
-            "dataset_size_mb": job_data.get("dataset_size_mb", 100),
-            "code_complexity_score": job_data.get("code_complexity_score", 5),
-            "memory_requirement_mb": job_data.get("memory_requirement_mb", 512),
-            "cpu_requirement_cores": job_data.get("cpu_requirement_cores", 1),
-        }
+        analytics_type = job_data.get("analytics_type")
+
+        if analytics_type and "total_file_size_mb" in job_data:
+            # File-upload mode: derive features automatically
+            file_size = job_data["total_file_size_mb"]
+            complexity = self.ANALYTICS_COMPLEXITY.get(analytics_type, 5)
+            features = {
+                "dataset_size_mb": file_size,
+                "code_complexity_score": complexity,
+                "memory_requirement_mb": min(int(file_size * 3), 8192),
+                "cpu_requirement_cores": 4 if analytics_type == "ml" else 2,
+            }
+        else:
+            # Legacy mode
+            features = {
+                "dataset_size_mb": job_data.get("dataset_size_mb", 100),
+                "code_complexity_score": job_data.get("code_complexity_score", 5),
+                "memory_requirement_mb": job_data.get("memory_requirement_mb", 512),
+                "cpu_requirement_cores": job_data.get("cpu_requirement_cores", 1),
+            }
         return self.classifier.classify(features)
 
     def route_and_submit(self, job_id: str, job_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -72,10 +92,12 @@ class JobRouter:
         resources = self.classifier.get_resource_estimate(job_class)
 
         # Step 3: Route based on classification
-        if job_class == "small_quick":
-            return self._submit_local(job_id, job_data, classification, resources)
-        else:
+        # small_quick → local execution (fast, low overhead)
+        # medium_cpu / large_intensive → Dataproc YARN cluster (when available)
+        if job_class in ("medium_cpu", "large_intensive") and dataproc.gcloud_available:
             return self._submit_dataproc(job_id, job_data, classification, resources)
+        else:
+            return self._submit_local(job_id, job_data, classification, resources)
 
     def _submit_local(self, job_id: str, job_data: Dict[str, Any],
                       classification: Dict, resources: Dict) -> Dict[str, Any]:
@@ -91,12 +113,13 @@ class JobRouter:
             "execution_target": "local",
             "classification": classification,
             "resource_estimate": resources,
+            "analytics_type": job_data.get("analytics_type"),
             "message": f"Job classified as '{classification['job_class']}' — running locally"
         }
 
     def _submit_dataproc(self, job_id: str, job_data: Dict[str, Any],
                          classification: Dict, resources: Dict) -> Dict[str, Any]:
-        """Submit job to Dataproc YARN cluster."""
+        """Submit job to Dataproc YARN cluster (non-blocking)."""
         logger.info(f"Routing job {job_id} to DATAPROC YARN cluster")
 
         if not dataproc.gcloud_available:
@@ -122,36 +145,81 @@ class JobRouter:
                 "spark.sql.shuffle.partitions": "100",
             }
 
-        # Determine which script to run
-        script_path = job_data.get("script_path")
-        if not script_path:
-            script_path = os.path.join(
-                os.path.dirname(__file__), "..", "jobs", "hdfs_analytics.py"
-            )
+        analytics_type = job_data.get("analytics_type")
 
-        # Build script arguments from job data
-        args = []
-        if job_data.get("input_path"):
-            args.extend(["--input", job_data["input_path"]])
-        if job_data.get("output_path"):
-            args.extend(["--output", job_data["output_path"]])
+        # Initialize job tracking immediately so status is visible
+        dataproc.jobs[job_id] = {
+            "job_id": job_id,
+            "status": "uploading",
+            "execution_target": "dataproc_yarn",
+            "analytics_type": analytics_type,
+            "created_at": __import__("datetime").datetime.now().isoformat(),
+            "started_at": None,
+            "completed_at": None,
+            "output": "",
+            "error": None,
+            "yarn_app_id": None,
+            "progress": 0,
+        }
 
-        result = dataproc.submit_spark_job(
-            job_id=job_id,
-            script_path=script_path,
-            args=args,
-            spark_conf=spark_conf,
+        # Run the entire Dataproc pipeline (SCP + HDFS put + spark-submit)
+        # in a background thread so the API responds immediately
+        thread = threading.Thread(
+            target=self._run_dataproc_pipeline,
+            args=(job_id, job_data, spark_conf),
+            daemon=True
         )
+        thread.start()
 
         return {
             "job_id": job_id,
-            "status": result["status"],
+            "status": "uploading",
             "execution_target": "dataproc_yarn",
             "classification": classification,
             "resource_estimate": resources,
             "spark_config": spark_conf,
-            "message": f"Job classified as '{classification['job_class']}' — submitted to NYU Dataproc YARN cluster"
+            "analytics_type": analytics_type,
+            "message": f"Job classified as '{classification['job_class']}' — uploading data to NYU Dataproc cluster"
         }
+
+    def _run_dataproc_pipeline(self, job_id: str, job_data: Dict[str, Any],
+                                spark_conf: Dict[str, str]):
+        """Background thread: SCP files to Dataproc, put into HDFS, spark-submit."""
+        analytics_type = job_data.get("analytics_type")
+        input_path = job_data.get("input_path")
+
+        try:
+            script_path = os.path.join(
+                os.path.dirname(__file__), "..", "jobs", "analytics_engine.py"
+            )
+
+            if input_path:
+                # Upload the input file to HDFS (skips if already there)
+                hdfs_input = dataproc.upload_data_file(job_id, input_path)
+
+                hdfs_output = f"{dataproc.HDFS_ORCAFLOW_DIR}/output/{job_id}"
+                args = [
+                    "--input", hdfs_input,
+                    "--analytics-type", analytics_type,
+                    "--output", hdfs_output,
+                ]
+            else:
+                args = []
+
+            # Submit spark job (also runs in its own thread internally)
+            dataproc.submit_spark_job(
+                job_id=job_id,
+                script_path=script_path,
+                args=args,
+                spark_conf=spark_conf,
+            )
+
+        except Exception as e:
+            logger.error(f"Dataproc pipeline failed for {job_id}: {e}")
+            dataproc.jobs[job_id]["status"] = "failed"
+            dataproc.jobs[job_id]["error"] = str(e)
+            dataproc.jobs[job_id]["completed_at"] = \
+                __import__("datetime").datetime.now().isoformat()
 
     def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """

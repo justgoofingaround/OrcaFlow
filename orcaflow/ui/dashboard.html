@@ -136,12 +136,6 @@
 
             <div class="sidebar-label">Infrastructure</div>
             <div class="sidebar-item" onclick="showPage('dataproc')">Dataproc <span class="status-dot dot-gray" id="dp-dot"></span></div>
-            <div class="sidebar-item" onclick="showPage('kafka')">Kafka <span class="status-dot dot-gray" id="kf-dot"></span></div>
-            <div class="sidebar-item" onclick="showPage('yarn')">YARN</div>
-
-            <div class="sidebar-label">ML</div>
-            <div class="sidebar-item" onclick="showPage('classifier')">Classifier</div>
-            <div class="sidebar-item" onclick="showPage('predictions')">Predictions</div>
         </div>
 
         <!-- MAIN -->
@@ -173,20 +167,13 @@
                             <div class="resource-row"><span class="resource-name">Memory</span><div class="resource-right"><div class="progress-bar"><div class="progress-fill fill-green" id="bar-mem" style="width:0%"></div></div><span class="resource-val" id="val-mem">0%</span></div></div>
                             <div class="resource-row"><span class="resource-name">Disk</span><div class="resource-right"><div class="progress-bar"><div class="progress-fill fill-orange" id="bar-disk" style="width:0%"></div></div><span class="resource-val" id="val-disk">0%</span></div></div>
                             <div class="resource-row"><span class="resource-name">Dataproc</span><div class="resource-right"><span class="badge" id="badge-dp">--</span></div></div>
-                            <div class="resource-row"><span class="resource-name">Kafka</span><div class="resource-right"><span class="badge" id="badge-kf">--</span></div></div>
                         </div>
                         <div class="card"><div class="card-title">Activity</div><div class="chart-container"><canvas id="activityChart"></canvas></div></div>
                     </div>
-                    <div class="grid-2">
-                        <div class="card">
-                            <div class="card-title">Recent Jobs</div>
-                            <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Type</th></tr></thead>
-                            <tbody id="dash-jobs"><tr><td colspan="4" class="empty">No jobs yet</td></tr></tbody></table>
-                        </div>
-                        <div class="card">
-                            <div class="card-title">Kafka Events</div>
-                            <div class="event-list" id="dash-events"><div class="empty">Events appear when Kafka is running</div></div>
-                        </div>
+                    <div class="card">
+                        <div class="card-title">Recent Jobs</div>
+                        <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Type</th></tr></thead>
+                        <tbody id="dash-jobs"><tr><td colspan="4" class="empty">No jobs yet</td></tr></tbody></table>
                     </div>
                 </div>
 
@@ -202,7 +189,7 @@
                         <button class="btn btn-sm btn-primary" onclick="showPage('submit')">New Job</button>
                     </div>
                     <div class="card">
-                        <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Type</th><th>Progress</th><th>Duration</th><th>Records</th><th>Actions</th></tr></thead>
+                        <table><thead><tr><th>Job ID</th><th>Status</th><th>Target</th><th>Analytics</th><th>Progress</th><th>Duration</th><th>Records</th><th>Actions</th></tr></thead>
                         <tbody id="jobs-table"><tr><td colspan="8" class="empty">No jobs submitted yet</td></tr></tbody></table>
                     </div>
                     <div class="card" id="job-detail-card" style="display:none;">
@@ -214,45 +201,56 @@
 
                 <!-- ===== SUBMIT JOB ===== -->
                 <div class="page" id="page-submit">
+                    <div id="submit-msg"></div>
+
+                    <!-- Step 1: Select HDFS Data File -->
                     <div class="card">
-                        <div class="card-title">Submit New Job</div>
-                        <div id="submit-msg"></div>
-                        <form id="job-form" onsubmit="submitJob(event)">
-                            <div class="form-grid">
-                                <div class="form-group"><label>Job Type</label><select id="f-type" class="form-select"><option value="batch_analytics">Batch Analytics</option><option value="data_processing">Data Processing</option><option value="ml_training">ML Training</option></select></div>
-                                <div class="form-group"><label>Dataset Size (MB)</label><input type="number" id="f-size" class="form-input" value="100" min="1"></div>
-                                <div class="form-group"><label>Complexity (1-10)</label><input type="number" id="f-complexity" class="form-input" value="5" min="1" max="10"></div>
-                                <div class="form-group"><label>Memory (MB)</label><input type="number" id="f-memory" class="form-input" value="1024" min="128"></div>
-                                <div class="form-group"><label>CPU Cores</label><input type="number" id="f-cpu" class="form-input" value="2" min="1"></div>
-                                <div class="form-group"><label>Priority (1-10)</label><input type="number" id="f-priority" class="form-input" value="5" min="1" max="10"></div>
+                        <div class="card-title">Step 1: Select HDFS Data File</div>
+                        <div style="display:flex;gap:8px;align-items:flex-end;">
+                            <div class="form-group" style="flex:1;">
+                                <label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px;">Data File on Dataproc HDFS</label>
+                                <select id="f-hdfs-file" class="form-select" style="font-family:monospace;font-size:13px;">
+                                    <option value="">-- Select a data file --</option>
+                                </select>
                             </div>
-                            <div style="margin-top:14px;display:flex;gap:10px;">
-                                <button type="button" class="btn btn-secondary" onclick="previewClassify()">Preview Classification</button>
-                                <button type="submit" class="btn btn-primary">Submit Job</button>
-                            </div>
-                        </form>
-                        <div class="cls-result" id="cls-result">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span style="font-weight:700;">ML Classification: <span id="cls-name">-</span></span>
-                                <span style="font-size:12px;color:#718096;" id="cls-conf">-</span>
-                            </div>
-                            <div class="cls-row">
-                                <div><div class="cls-val" id="cls-target">-</div><div class="cls-lbl">Target</div></div>
-                                <div><div class="cls-val" id="cls-dur">-</div><div class="cls-lbl">Est. Duration</div></div>
-                                <div><div class="cls-val" id="cls-workers">-</div><div class="cls-lbl">Workers</div></div>
-                                <div><div class="cls-val" id="cls-cost">-</div><div class="cls-lbl">Est. Cost</div></div>
-                            </div>
+                            <button class="btn btn-secondary" onclick="loadHDFSDropdown()" style="height:36px;">Refresh</button>
                         </div>
                     </div>
+
+                    <!-- Step 2: PySpark Script -->
                     <div class="card">
-                        <div class="card-title">How Job Routing Works</div>
-                        <p style="font-size:13px;color:#4a5568;line-height:1.6;">
-                            When you submit a job, the ML classifier analyzes the parameters and predicts the job class:<br><br>
-                            <b>small_quick</b> (low data, low complexity) &rarr; Runs locally on this machine<br>
-                            <b>medium_cpu</b> (moderate data/complexity) &rarr; Sent to NYU Dataproc YARN cluster (2 executors)<br>
-                            <b>large_intensive</b> (high data/complexity) &rarr; Sent to NYU Dataproc YARN cluster (4 executors)<br><br>
-                            The PySpark job generates synthetic transaction data, runs distributed analytics (category revenue, top customers, time-series, cross-tabs), and saves results.
+                        <div class="card-title">Step 2: PySpark Script</div>
+                        <p style="font-size:12px;color:#718096;margin-bottom:12px;">
+                            Write or upload a PySpark script. The HDFS input path is passed as <code>sys.argv[1]</code>.
                         </p>
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <button class="btn btn-sm btn-primary" id="tab-write" onclick="showScriptTab('write')">Write Script</button>
+                            <button class="btn btn-sm btn-secondary" id="tab-upload" onclick="showScriptTab('upload')">Upload .py File</button>
+                        </div>
+                        <div id="script-write">
+                            <textarea id="f-script" class="form-input" rows="16" style="font-family:'SF Mono',Monaco,monospace;font-size:12px;line-height:1.5;resize:vertical;background:#1a202c;color:#e2e8f0;border:none;border-radius:6px;padding:14px;">from pyspark.sql import SparkSession
+import sys
+
+spark = SparkSession.builder.appName("OrcaFlow-Custom").getOrCreate()
+input_path = sys.argv[1]
+
+df = spark.read.csv(input_path, header=True, inferSchema=True)
+print(f"Total records: {df.count()}")
+df.printSchema()
+df.describe().show()
+
+spark.stop()
+</textarea>
+                        </div>
+                        <div id="script-upload" style="display:none;">
+                            <div style="border:2px dashed #cbd5e0;border-radius:8px;padding:30px;text-align:center;">
+                                <input type="file" id="f-script-file" accept=".py" style="font-size:13px;">
+                                <p style="font-size:12px;color:#a0aec0;margin-top:8px;">Select a .py file</p>
+                            </div>
+                        </div>
+                        <div style="margin-top:14px;">
+                            <button class="btn btn-primary" onclick="submitScript()">Submit to Dataproc</button>
+                        </div>
                     </div>
                 </div>
 
@@ -281,85 +279,6 @@
                     </div>
                 </div>
 
-                <!-- ===== KAFKA ===== -->
-                <div class="page" id="page-kafka">
-                    <div class="card">
-                        <div class="card-title">Kafka Status</div>
-                        <div class="info-grid">
-                            <span class="info-label">Status</span><span class="info-value" id="kf-status">Checking...</span>
-                            <span class="info-label">Broker</span><span class="info-value">localhost:9092</span>
-                            <span class="info-label">Topics</span><span class="info-value">orcaflow-job-events, orcaflow-cluster-metrics</span>
-                        </div>
-                        <p style="font-size:12px;color:#718096;margin-top:10px;">Start Kafka with: <code style="background:#edf2f7;padding:2px 6px;border-radius:3px;">docker-compose up -d kafka</code></p>
-                    </div>
-                    <div class="card">
-                        <div class="card-title">Event Stream <span id="kf-count" style="font-size:11px;color:#a0aec0;font-weight:400;"></span>
-                            <button class="btn btn-sm btn-secondary" onclick="loadEvents()" style="float:right;">Refresh</button>
-                        </div>
-                        <div class="event-list" id="kafka-events"><div class="empty">No events yet. Start Kafka and submit jobs to see events here.</div></div>
-                    </div>
-                </div>
-
-                <!-- ===== YARN ===== -->
-                <div class="page" id="page-yarn">
-                    <div class="card">
-                        <div class="card-title">YARN Applications <button class="btn btn-sm btn-secondary" onclick="loadYARN()" style="float:right;">Refresh</button></div>
-                        <div id="yarn-content"><div class="empty">Click Refresh to fetch YARN status from Dataproc</div></div>
-                    </div>
-                    <div class="card">
-                        <div class="card-title">About YARN</div>
-                        <p style="font-size:13px;color:#4a5568;line-height:1.6;">
-                            YARN (Yet Another Resource Negotiator) is the resource manager on the NYU Dataproc cluster.
-                            When OrcaFlow classifies a job as <b>medium_cpu</b> or <b>large_intensive</b>, it submits the PySpark job
-                            to YARN via <code>spark-submit --master yarn</code> on the Dataproc master node.
-                            YARN allocates executors across the cluster nodes and manages job lifecycle.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- ===== CLASSIFIER ===== -->
-                <div class="page" id="page-classifier">
-                    <div class="grid-2">
-                        <div class="card">
-                            <div class="card-title">ML Classifier</div>
-                            <div class="info-grid">
-                                <span class="info-label">Algorithm</span><span class="info-value">Random Forest</span>
-                                <span class="info-label">Status</span><span class="info-value" id="clf-status">--</span>
-                                <span class="info-label">Features</span><span class="info-value">dataset_size, complexity, memory, cpu_cores, priority, duration</span>
-                                <span class="info-label">Classes</span><span class="info-value">small_quick, medium_cpu, large_intensive</span>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-title">Classification Rules (Fallback)</div>
-                            <p style="font-size:13px;color:#4a5568;line-height:1.8;">
-                                When no trained model is loaded, rule-based classification is used:<br>
-                                <b>small_quick:</b> dataset &lt; 500MB AND complexity &lt; 4<br>
-                                <b>large_intensive:</b> dataset &gt; 2000MB OR complexity &gt; 7<br>
-                                <b>medium_cpu:</b> everything else
-                            </p>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-title">Test Classifier</div>
-                        <div class="form-grid">
-                            <div class="form-group"><label>Dataset Size (MB)</label><input type="number" id="tc-size" class="form-input" value="500"></div>
-                            <div class="form-group"><label>Complexity (1-10)</label><input type="number" id="tc-complexity" class="form-input" value="5"></div>
-                            <div class="form-group"><label>Memory (MB)</label><input type="number" id="tc-memory" class="form-input" value="2048"></div>
-                            <div class="form-group"><label>CPU Cores</label><input type="number" id="tc-cpu" class="form-input" value="4"></div>
-                        </div>
-                        <button class="btn btn-primary" onclick="testClassify()" style="margin-top:12px;">Classify</button>
-                        <div id="tc-result" style="margin-top:12px;"></div>
-                    </div>
-                </div>
-
-                <!-- ===== PREDICTIONS ===== -->
-                <div class="page" id="page-predictions">
-                    <div class="card">
-                        <div class="card-title">Classification History</div>
-                        <table><thead><tr><th>Job ID</th><th>Predicted Class</th><th>Confidence</th><th>Target</th><th>Dataset Size</th><th>Complexity</th></tr></thead>
-                        <tbody id="pred-table"><tr><td colspan="6" class="empty">Submit jobs to see classification history</td></tr></tbody></table>
-                    </div>
-                </div>
 
             </div>
         </div>
@@ -369,7 +288,6 @@
         const API = 'http://localhost:8000';
         let chart = null;
         const hist = { labels: [], cpu: [], mem: [] };
-        let predictions = [];
         let allJobs = [];
 
         // ===== NAVIGATION =====
@@ -378,15 +296,14 @@
             document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
             const page = document.getElementById('page-' + name);
             if (page) page.classList.add('active');
-            const titles = { dashboard:'Dashboard', jobs:'Jobs', submit:'Submit Job', dataproc:'Dataproc', kafka:'Kafka', yarn:'YARN', classifier:'Classifier', predictions:'Predictions' };
+            const titles = { dashboard:'Dashboard', jobs:'Jobs', submit:'Submit Job', dataproc:'Dataproc' };
             document.getElementById('page-title').textContent = titles[name] || name;
             const items = document.querySelectorAll('.sidebar-item');
-            const map = { dashboard:0, jobs:1, submit:2, dataproc:3, kafka:4, yarn:5, classifier:6, predictions:7 };
+            const map = { dashboard:0, jobs:1, submit:2, dataproc:3 };
             if (map[name] !== undefined) items[map[name]].classList.add('active');
             if (name === 'jobs') loadJobs();
+            if (name === 'submit') loadHDFSDropdown();
             if (name === 'dataproc') checkDataproc();
-            if (name === 'kafka') loadEvents();
-            if (name === 'classifier') loadClassifierStatus();
         }
 
         // ===== HELPERS =====
@@ -418,12 +335,10 @@
                 document.getElementById('bar-disk').style.width = (d.disk_usage||0) + '%';
                 document.getElementById('val-disk').textContent = Math.round(d.disk_usage||0) + '%';
 
-                var dpB = document.getElementById('badge-dp'), kfB = document.getElementById('badge-kf');
-                var dpD = document.getElementById('dp-dot'), kfD = document.getElementById('kf-dot');
+                var dpB = document.getElementById('badge-dp');
+                var dpD = document.getElementById('dp-dot');
                 if (d.dataproc_connected) { dpB.className='badge b-connected'; dpB.textContent='Connected'; dpD.className='status-dot dot-green'; }
                 else { dpB.className='badge b-offline'; dpB.textContent='Offline'; dpD.className='status-dot dot-red'; }
-                if (d.kafka_connected) { kfB.className='badge b-connected'; kfB.textContent='Connected'; kfD.className='status-dot dot-green'; }
-                else { kfB.className='badge b-offline'; kfB.textContent='Offline'; kfD.className='status-dot dot-yellow'; }
 
                 var tbody = document.getElementById('dash-jobs');
                 if (d.jobs && d.jobs.length > 0) {
@@ -460,18 +375,6 @@
             });
         }
 
-        async function updateDashEvents() {
-            try {
-                var r = await fetch(API + '/api/events?limit=10');
-                var d = await r.json();
-                var el = document.getElementById('dash-events');
-                if (d.events && d.events.length > 0) {
-                    el.innerHTML = d.events.map(function(e) {
-                        return '<div class="event-item"><span class="event-time">' + (e.timestamp||'').substring(11,19) + '</span><span class="event-type">' + e.event_type + '</span><span class="event-detail">' + (e.job_id||'') + '</span></div>';
-                    }).join('');
-                }
-            } catch(e) {}
-        }
 
         // ===== JOBS =====
         async function loadJobs(statusFilter) {
@@ -484,11 +387,16 @@
             } catch(e) { console.error(e); }
         }
         function filterJobs(s) { loadJobs(s); }
+        function aBadge(a) {
+            if (!a) return '<span style="color:#a0aec0;font-size:11px;">synthetic</span>';
+            var colors = { profiling: '#ebf8ff;color:#2b6cb0', aggregation: '#f0fff4;color:#276749', etl: '#faf5ff;color:#553c9a', ml: '#fff5f5;color:#9b2c2c' };
+            return '<span class="badge" style="background:' + (colors[a] || '#edf2f7;color:#2d3748') + ';">' + a + '</span>';
+        }
         function renderJobs(jobs) {
             var tb = document.getElementById('jobs-table');
             if (!jobs.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No jobs found</td></tr>'; return; }
             tb.innerHTML = jobs.map(function(j) {
-                return '<tr><td style="font-family:monospace;font-size:11px;">' + (j.job_id||'').slice(0,22) + '</td><td>' + sBadge(j.status) + '</td><td>' + tBadge(j.execution_target) + '</td><td>' + (j.job_type||'-') + '</td><td>' + (j.progress != null ? j.progress + '%' : '-') + '</td><td>' + (j.execution_time ? j.execution_time.toFixed(1) + 's' : '-') + '</td><td>' + (j.records_processed ? j.records_processed.toLocaleString() : '-') + '</td><td><button class="btn btn-sm btn-secondary" onclick="viewJob(\'' + j.job_id + '\')">View</button></td></tr>';
+                return '<tr><td style="font-family:monospace;font-size:11px;">' + (j.job_id||'').slice(0,22) + '</td><td>' + sBadge(j.status) + '</td><td>' + tBadge(j.execution_target) + '</td><td>' + aBadge(j.analytics_type) + '</td><td>' + (j.progress != null ? j.progress + '%' : '-') + '</td><td>' + (j.execution_time ? j.execution_time.toFixed(1) + 's' : '-') + '</td><td>' + (j.records_processed ? j.records_processed.toLocaleString() : '-') + '</td><td><button class="btn btn-sm btn-secondary" onclick="viewJob(\'' + j.job_id + '\')">View</button></td></tr>';
             }).join('');
         }
 
@@ -503,7 +411,7 @@
                     '<span class="info-label">Job ID</span><span class="info-value" style="font-family:monospace;">' + st.job_id + '</span>' +
                     '<span class="info-label">Status</span><span class="info-value">' + sBadge(st.status) + '</span>' +
                     '<span class="info-label">Target</span><span class="info-value">' + tBadge(st.execution_target) + '</span>' +
-                    '<span class="info-label">Type</span><span class="info-value">' + (st.job_type||'-') + '</span>' +
+                    '<span class="info-label">Analytics</span><span class="info-value">' + aBadge(st.analytics_type) + '</span>' +
                     '<span class="info-label">Progress</span><span class="info-value">' + (st.progress != null ? st.progress + '%' : '-') + '</span>' +
                     '<span class="info-label">Records</span><span class="info-value">' + (st.records_processed ? st.records_processed.toLocaleString() : '-') + '</span>' +
                     '<span class="info-label">Duration</span><span class="info-value">' + (st.execution_time ? st.execution_time.toFixed(2) + 's' : '-') + '</span>' +
@@ -517,37 +425,74 @@
             } catch(e) { console.error(e); }
         }
 
-        // ===== SUBMIT =====
-        function getFormData() {
-            return { job_type: document.getElementById('f-type').value, dataset_size_mb: parseInt(document.getElementById('f-size').value), code_complexity_score: parseInt(document.getElementById('f-complexity').value), memory_requirement_mb: parseInt(document.getElementById('f-memory').value), cpu_requirement_cores: parseInt(document.getElementById('f-cpu').value), priority: parseInt(document.getElementById('f-priority').value) };
-        }
-        async function previewClassify() {
+        // ===== HDFS DROPDOWN & SCRIPT SUBMIT =====
+        var hdfsBasePath = '';
+
+        async function loadHDFSDropdown() {
+            var sel = document.getElementById('f-hdfs-file');
+            sel.innerHTML = '<option value="">Loading HDFS files...</option>';
             try {
-                var r = await fetch(API + '/api/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
+                var r = await fetch(API + '/api/dataproc/hdfs');
                 var d = await r.json();
-                var el = document.getElementById('cls-result'); el.classList.add('show');
-                document.getElementById('cls-name').textContent = d.classification.job_class;
-                document.getElementById('cls-conf').textContent = (d.classification.confidence * 100).toFixed(0) + '% confidence';
-                document.getElementById('cls-target').textContent = d.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local';
-                document.getElementById('cls-dur').textContent = d.resource_estimate.estimated_duration_sec + 's';
-                document.getElementById('cls-workers').textContent = d.resource_estimate.recommended_workers;
-                document.getElementById('cls-cost').textContent = '$' + d.resource_estimate.estimated_cost_usd;
-            } catch(e) { document.getElementById('submit-msg').innerHTML = '<div class="alert alert-err">Classification failed: ' + e.message + '</div>'; }
+                hdfsBasePath = d.path || '';
+                sel.innerHTML = '<option value="">-- Select a data file --</option>';
+                if (d.files && d.files.length > 0) {
+                    d.files.forEach(function(f) {
+                        var filePath = f.split('  (')[0];
+                        var opt = document.createElement('option');
+                        opt.value = hdfsBasePath + filePath;
+                        opt.textContent = f;
+                        sel.appendChild(opt);
+                    });
+                } else {
+                    sel.innerHTML = '<option value="">No data files found in HDFS</option>';
+                }
+            } catch(e) {
+                sel.innerHTML = '<option value="">Failed to load HDFS files</option>';
+            }
         }
-        async function submitJob(e) {
-            e.preventDefault();
+
+        function showScriptTab(tab) {
+            document.getElementById('script-write').style.display = tab === 'write' ? 'block' : 'none';
+            document.getElementById('script-upload').style.display = tab === 'upload' ? 'block' : 'none';
+            document.getElementById('tab-write').className = 'btn btn-sm ' + (tab === 'write' ? 'btn-primary' : 'btn-secondary');
+            document.getElementById('tab-upload').className = 'btn btn-sm ' + (tab === 'upload' ? 'btn-primary' : 'btn-secondary');
+        }
+
+        async function submitScript() {
+            var hdfsPath = document.getElementById('f-hdfs-file').value;
             var msg = document.getElementById('submit-msg');
+
+            if (!hdfsPath) { msg.innerHTML = '<div class="alert alert-err">Select a data file first</div>'; return; }
+
+            var scriptContent = '';
+            var writeVisible = document.getElementById('script-write').style.display !== 'none';
+            if (writeVisible) {
+                scriptContent = document.getElementById('f-script').value.trim();
+            } else {
+                var fileInput = document.getElementById('f-script-file');
+                if (!fileInput.files.length) { msg.innerHTML = '<div class="alert alert-err">Select a .py file to upload</div>'; return; }
+                scriptContent = await fileInput.files[0].text();
+            }
+
+            if (!scriptContent) { msg.innerHTML = '<div class="alert alert-err">Script cannot be empty</div>'; return; }
+
+            msg.innerHTML = '<div class="alert alert-info">Submitting script to Dataproc...</div>';
+
             try {
-                var r = await fetch(API + '/api/jobs/submit', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getFormData()) });
+                var r = await fetch(API + '/api/jobs/submit-script', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ hdfs_path: hdfsPath, script_content: scriptContent })
+                });
                 var d = await r.json();
                 if (r.ok) {
-                    var target = d.execution_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'locally';
-                    var cls = d.classification ? d.classification.job_class : 'unknown';
-                    msg.innerHTML = '<div class="alert alert-ok">Job <b>' + d.job_id + '</b> classified as <b>' + cls + '</b> &rarr; running <b>' + target + '</b></div>';
-                    predictions.push({ job_id: d.job_id, cls: cls, conf: d.classification ? d.classification.confidence : null, target: d.execution_target, size: getFormData().dataset_size_mb, complexity: getFormData().code_complexity_score });
-                    updatePredictions();
+                    var fname = hdfsPath.split('/').pop();
+                    msg.innerHTML = '<div class="alert alert-ok">Job <b>' + d.job_id + '</b> submitted to Dataproc YARN<br>Data: <b>' + fname + '</b></div>';
                     setTimeout(updateDashboard, 1000);
-                } else { msg.innerHTML = '<div class="alert alert-err">' + (d.detail || 'Submission failed') + '</div>'; }
+                } else {
+                    msg.innerHTML = '<div class="alert alert-err">' + (d.detail || 'Submission failed') + '</div>';
+                }
             } catch(e) { msg.innerHTML = '<div class="alert alert-err">Failed: ' + e.message + '</div>'; }
         }
 
@@ -575,21 +520,6 @@
             } catch(e) { el.innerHTML = '<div class="alert alert-err">Could not load HDFS: ' + e.message + '</div>'; }
         }
 
-        // ===== KAFKA =====
-        async function loadEvents() {
-            try {
-                var r = await fetch(API + '/api/events?limit=50');
-                var d = await r.json();
-                document.getElementById('kf-status').innerHTML = d.kafka_enabled ? '<span class="badge b-connected">Connected</span>' : '<span class="badge b-offline">Offline (logging only)</span>';
-                document.getElementById('kf-count').textContent = d.events ? '(' + d.events.length + ' events)' : '';
-                var el = document.getElementById('kafka-events');
-                if (d.events && d.events.length > 0) {
-                    el.innerHTML = d.events.map(function(e) {
-                        return '<div class="event-item"><span class="event-time">' + (e.timestamp||'').substring(11,19) + '</span><span class="event-type">' + e.event_type + '</span><span class="event-detail">' + (e.job_id||'') + ' ' + (e.data ? JSON.stringify(e.data).substring(0,80) : '') + '</span></div>';
-                    }).join('');
-                } else { el.innerHTML = '<div class="empty">No events. Submit jobs to generate events.</div>'; }
-            } catch(e) { console.error(e); }
-        }
 
         // ===== YARN =====
         async function loadYARN() {
@@ -603,43 +533,13 @@
             } catch(e) { el.innerHTML = '<div class="alert alert-err">Could not fetch YARN: ' + e.message + '</div>'; }
         }
 
-        // ===== CLASSIFIER =====
-        async function loadClassifierStatus() {
-            try {
-                var r = await fetch(API + '/health');
-                var d = await r.json();
-                var s = d.components ? d.components.ml_classifier : null;
-                document.getElementById('clf-status').innerHTML = s === true ? '<span class="badge b-connected">Trained Model</span>' : '<span class="badge" style="background:#fefcbf;color:#975a16;">Rule-based Fallback</span>';
-            } catch(e) {}
-        }
-        async function testClassify() {
-            var data = { dataset_size_mb: parseInt(document.getElementById('tc-size').value), code_complexity_score: parseInt(document.getElementById('tc-complexity').value), memory_requirement_mb: parseInt(document.getElementById('tc-memory').value), cpu_requirement_cores: parseInt(document.getElementById('tc-cpu').value), priority: 5, job_type: 'batch_analytics' };
-            try {
-                var r = await fetch(API + '/api/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
-                var d = await r.json();
-                var cls = d.classification.job_class;
-                var colors = { small_quick: '#48bb78', medium_cpu: '#ed8936', large_intensive: '#e53e3e' };
-                document.getElementById('tc-result').innerHTML = '<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;"><div style="font-size:18px;font-weight:700;color:' + (colors[cls]||'#2d3748') + ';">' + cls + '</div><div style="font-size:12px;color:#718096;margin-top:4px;">Target: <b>' + (d.recommended_target === 'dataproc_yarn' ? 'Dataproc YARN' : 'Local') + '</b> | Duration: <b>' + d.resource_estimate.estimated_duration_sec + 's</b> | Workers: <b>' + d.resource_estimate.recommended_workers + '</b> | Confidence: <b>' + (d.classification.confidence * 100).toFixed(0) + '%</b></div><div style="margin-top:8px;font-size:12px;color:#a0aec0;">Probabilities: small=' + (d.classification.class_probabilities.small_quick*100).toFixed(0) + '%, medium=' + (d.classification.class_probabilities.medium_cpu*100).toFixed(0) + '%, large=' + (d.classification.class_probabilities.large_intensive*100).toFixed(0) + '%</div></div>';
-            } catch(e) { document.getElementById('tc-result').innerHTML = '<div class="alert alert-err">Error: ' + e.message + '</div>'; }
-        }
-
-        // ===== PREDICTIONS =====
-        function updatePredictions() {
-            var tb = document.getElementById('pred-table');
-            if (!predictions.length) return;
-            tb.innerHTML = predictions.slice().reverse().map(function(p) {
-                return '<tr><td style="font-family:monospace;font-size:11px;">' + (p.job_id||'').slice(0,22) + '</td><td><b>' + p.cls + '</b></td><td>' + (p.conf ? (p.conf*100).toFixed(0) + '%' : '-') + '</td><td>' + tBadge(p.target) + '</td><td>' + p.size + ' MB</td><td>' + p.complexity + '/10</td></tr>';
-            }).join('');
-        }
 
         // ===== REFRESH =====
-        function refreshAll() { updateDashboard(); updateDashEvents(); }
+        function refreshAll() { updateDashboard(); }
 
         // ===== INIT =====
         updateDashboard();
-        updateDashEvents();
         setInterval(updateDashboard, 5000);
-        setInterval(updateDashEvents, 5000);
     </script>
 </body>
 </html>

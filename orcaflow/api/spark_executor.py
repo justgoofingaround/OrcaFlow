@@ -61,28 +61,31 @@ class SparkJobExecutor:
             Exception: If job submission fails
         """
         
-        # Locate job script
-        job_script = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "jobs",
-            "sample_pyspark.py"
-        )
-        
+        # Locate job script — use analytics_engine.py for file uploads,
+        # fall back to sample_pyspark.py for legacy submissions
+        jobs_dir = os.path.join(os.path.dirname(__file__), "..", "jobs")
+        analytics_type = job_data.get("analytics_type")
+
+        if analytics_type:
+            job_script = os.path.join(jobs_dir, "analytics_engine.py")
+        else:
+            job_script = os.path.join(jobs_dir, "sample_pyspark.py")
+
         if not os.path.exists(job_script):
             raise FileNotFoundError(f"Job script not found: {job_script}")
-        
+
         # Create job output directory
         job_output_dir = os.path.join(self.output_dir, job_id)
         os.makedirs(job_output_dir, exist_ok=True)
-        
+
         # Create log file path
         log_file = os.path.join(job_output_dir, "job.log")
-        
+
         # Initialize job metadata
         self.jobs[job_id] = {
             "job_id": job_id,
             "job_type": job_data.get('job_type', 'batch_analytics'),
+            "analytics_type": analytics_type,
             "status": "running",
             "created_at": datetime.now().isoformat(),
             "started_at": datetime.now().isoformat(),
@@ -100,18 +103,35 @@ class SparkJobExecutor:
             "cpu_usage": None,
             "memory_usage": None
         }
-        
+
         # Get Python executable from virtual environment
         python_exe = self._get_python_executable()
-        
+
+        # Build command with args
+        if analytics_type:
+            input_path = job_data.get("input_path", "")
+            cmd = [
+                python_exe, job_script,
+                "--input", input_path,
+                "--analytics-type", analytics_type,
+                "--output", job_output_dir,
+            ]
+        else:
+            cmd = [python_exe, job_script]
+
         try:
             # Start job in a background process
+            # PYTHONUNBUFFERED ensures real-time log output
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+            env["MASTER"] = "local[4]"
             with open(log_file, 'w') as lf:
                 process = subprocess.Popen(
-                    [python_exe, job_script],
+                    cmd,
                     stdout=lf,
                     stderr=subprocess.STDOUT,
                     cwd=job_output_dir,
+                    env=env,
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
                 )
             
@@ -255,6 +275,7 @@ class SparkJobExecutor:
             "started_at": job.get("started_at"),
             "completed_at": job.get("completed_at"),
             "job_type": job["job_type"],
+            "analytics_type": job.get("analytics_type"),
             "records_processed": job.get("records_processed"),
             "execution_time": job.get("execution_time"),
             "error": job.get("error"),
